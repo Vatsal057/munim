@@ -72,6 +72,7 @@ Rules:
 - If a khata page lists several names and amounts, create one entry per line.
 - Only use names you can actually read in the image or text. "Known names" are only for matching spelling; never pick a known name that is not written there.
 - A line with a minus sign, "paid", "jama" or "mila" next to it is a payment_received, not credit.
+- Cash book pages (Date / Particulars / Debit / Credit / Balance): never create entries from the Balance column or for "Opening Balance" / "Closing Balance". "To Cash Sales" is a sale. "To Amount received from <name>" is payment_received from that name. "By Purchase ..." is supplier_paid (party = what was bought, e.g. "Stationery"). Other "By ..." expenses (rent, salary, electricity, miscellaneous) are supplier_paid with the expense as party_name. Put the row's date in due_date only if it is in the future.
 - Resolve relative dates ("Friday", "next week", "tomorrow") to an ISO date (YYYY-MM-DD), using the current date in Asia/Kolkata. If no date is mentioned, use null.
 - If you are not confident about an amount, name, or type, set confidence to "low". Set confidence to "high" only when the text/image is unambiguous.
 - party_kind is "supplier" for purchase/supplier_due/supplier_paid entries, "customer" otherwise, unless context clearly says otherwise.
@@ -124,8 +125,10 @@ async function runGemini(task: string, imageBase64: string, mime: string): Promi
     headers: { "content-type": "application/json", "x-goog-api-key": process.env.GEMINI_API_KEY! },
     body: JSON.stringify({
       contents: [{ role: "user", parts: [{ inline_data: { mime_type: mime, data: imageBase64 } }, { text: task }] }],
-      generationConfig: { responseMimeType: "application/json", temperature: 0 },
+      // Thinking off: a ledger page is a read-and-copy job, and thinking made calls take minutes.
+      generationConfig: { responseMimeType: "application/json", temperature: 0, thinkingConfig: { thinkingBudget: 0 } },
     }),
+    signal: AbortSignal.timeout(45_000),
   });
   const body = (await res.json().catch(() => ({}))) as {
     candidates?: { content?: { parts?: { text?: string }[] } }[];
