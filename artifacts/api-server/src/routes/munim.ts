@@ -104,6 +104,7 @@ router.get("/agent/merchants", rawBody, adapt(agentMerchants.GET as WebHandler))
 router.post("/agent/reminders", rawBody, adapt(agentReminders.POST as WebHandler));
 
 router.get("/pay/:token/stub", rawBody, adapt(payStub.GET as WebHandler));
+router.post("/pay/:token/stub", rawBody, adapt(payStub.POST as WebHandler));
 router.post("/pinelabs/webhook", rawBody, adapt(pinelabsWebhook.POST as WebHandler));
 
 router.get("/admin/export", rawBody, adapt(adminExport.GET as WebHandler));

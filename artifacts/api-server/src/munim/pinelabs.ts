@@ -10,6 +10,16 @@ export type CreatePaymentLinkResult = {
   paymentRef: string;
 };
 
+/** Public origin for links customers open. Render sets RENDER_EXTERNAL_URL itself, so a missing APP_URL no longer yields localhost links. */
+export function publicAppUrl(): string {
+  const replitDomain = process.env.REPLIT_DOMAINS?.split(",")[0];
+  return (
+    process.env.APP_URL ||
+    process.env.RENDER_EXTERNAL_URL ||
+    (replitDomain ? `https://${replitDomain}` : "http://localhost:3000")
+  ).replace(/\/$/, "");
+}
+
 function mode(): "stub" | "test" | "live" {
   return (process.env.PINELABS_MODE as "stub" | "test" | "live") || "stub";
 }
@@ -18,8 +28,7 @@ export async function createPaymentLink(
   input: CreatePaymentLinkInput,
   payToken: string
 ): Promise<CreatePaymentLinkResult> {
-  const replitDomain = process.env.REPLIT_DOMAINS?.split(",")[0];
-  const appUrl = process.env.APP_URL || (replitDomain ? `https://${replitDomain}` : "http://localhost:3000");
+  const appUrl = publicAppUrl();
 
   if (mode() === "stub") {
     return {
@@ -71,7 +80,7 @@ async function accessToken(): Promise<string> {
       grant_type: "client_credentials",
     }),
   });
-  const body = await resp.json().catch(() => ({}));
+  const body = (await resp.json().catch(() => ({}))) as { access_token?: string; expires_in?: number };
   if (!resp.ok || !body.access_token) throw new Error(`Pine Labs token failed (${resp.status})`);
   const ttlMs = (Number(body.expires_in) || 3000) * 1000;
   cachedToken = { value: body.access_token, expiresAt: Date.now() + ttlMs - 60_000 };
@@ -83,7 +92,7 @@ async function plFetch(path: string, init: { method: string; body?: string }): P
     ...init,
     headers: { "content-type": "application/json", authorization: `Bearer ${await accessToken()}` },
   });
-  const body = await resp.json().catch(() => ({}));
+  const body = (await resp.json().catch(() => ({}))) as Record<string, unknown>;
   if (!resp.ok) throw new Error(`Pine Labs ${init.method} ${path} failed (${resp.status}): ${JSON.stringify(body).slice(0, 300)}`);
   return body;
 }

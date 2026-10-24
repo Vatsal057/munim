@@ -13,7 +13,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const { id } = await params;
   const reminderId = Number(id);
 
-  const body = await req.json().catch(() => ({}));
+  const body = (await req.json().catch(() => ({}))) as { message?: string };
   const editedMessage: string | undefined = body?.message;
 
   const rows = await query<{

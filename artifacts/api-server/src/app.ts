@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import express, { type Express } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
@@ -33,5 +35,12 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
+
+// Production: serve the built frontend from the same origin (single Render service).
+const publicDir = path.resolve(process.cwd(), "../munim/dist/public");
+if (fs.existsSync(publicDir)) {
+  app.use(express.static(publicDir, { index: false, maxAge: "1h" }));
+  app.get(/^(?!\/api\/).*/, (_req, res) => res.sendFile(path.join(publicDir, "index.html")));
+}
 
 export default app;

@@ -29,6 +29,6 @@ export async function POST(req: Request) {
     return Response.json({ error: "Transcription failed" }, { status: 502 });
   }
 
-  const data = await res.json();
+  const data = (await res.json()) as { text?: string };
   return Response.json({ text: data.text ?? "" });
 }

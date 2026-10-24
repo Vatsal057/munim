@@ -9,13 +9,12 @@ export async function query<T = Record<string, unknown>>(sql: string, params: un
   return result.rows as T[];
 }
 
-/**
- * The schema (schema.sql) is applied to the development database ahead of time and
- * carried to production by Replit's publish flow, so no DDL runs at request time.
- * Kept as a no-op so the original call sites stay unchanged.
- */
+let schemaReady: Promise<void> | null = null;
+
+/** Applies schema.sql once per process; every statement is `if not exists`, so this is safe on a live DB. */
 export function ensureSchema(): Promise<void> {
-  return Promise.resolve();
+  if (!schemaReady) schemaReady = applySchemaFile().catch((err) => { schemaReady = null; throw err; });
+  return schemaReady;
 }
 
 /** Applies schema.sql explicitly (used by the seed script for fresh databases). */

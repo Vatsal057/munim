@@ -8,7 +8,8 @@
     "paths": {
       "@/lib/*": ["./src/munim/*"]
     },
-    "types": ["node"]
+    "types": ["node"],
+    "allowImportingTsExtensions": true
   },
   "include": ["src"],
   "references": [

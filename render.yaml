@@ -1,0 +1,39 @@
+services:
+  - type: web
+    name: munim
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: munim-db
+          property: connectionString
+      - key: NODE_ENV
+        value: production
+      - key: PINELABS_MODE
+        value: stub # set PINELABS_CLIENT_ID/SECRET, then "test"
+      - key: PINELABS_CLIENT_ID
+        sync: false
+      - key: PINELABS_CLIENT_SECRET
+        sync: false
+      - key: AGENTICORG_API_KEY
+        sync: false
+      - key: AGENTICORG_AGENT_ID
+        sync: false
+      - key: AGENTICORG_BASE_URL
+        value: https://agenticorg.hackathon.pinelabs.com
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: AGENT_API_KEY
+        generateValue: true
+      - key: ADMIN_KEY
+        generateValue: true
+      - key: TZ
+        value: Asia/Kolkata
+
+databases:
+  - name: munim-db
+    plan: free

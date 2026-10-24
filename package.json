@@ -3,10 +3,12 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
-    "build": "pnpm run typecheck && pnpm -r --if-present run build",
+    "build": "npx -y pnpm@10.34.8 install --frozen-lockfile --prod=false --config.confirmModulesPurge=false --filter @workspace/api-server... --filter @workspace/munim... && npx -y pnpm@10.34.8 --filter @workspace/munim --filter @workspace/api-server run build",
     "typecheck:libs": "tsc --build",
-    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
+    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
+    "start": "cd artifacts/api-server && node --enable-source-maps dist/index.mjs",
+    "seed": "npx -y pnpm@10.34.8 --filter @workspace/api-server run seed",
+    "test": "cd artifacts/api-server && AI_STUB=1 npx tsx --test src/munim/*.test.ts"
   },
   "private": true,
   "dependencies": {
@@ -15,5 +17,9 @@
   "devDependencies": {
     "prettier": "^3.9.10",
     "typescript": "~5.9.3"
-  }
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@10.34.8"
 }
