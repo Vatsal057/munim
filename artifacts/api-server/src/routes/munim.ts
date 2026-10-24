@@ -15,6 +15,7 @@ import * as agentReminders from "../munim-routes/agent/reminders/route";
 import * as agentRun from "../munim-routes/agent/run/route";
 import * as demoSlug from "../munim-routes/demo/[slug]/route";
 import * as entries from "../munim-routes/entries/route";
+import * as entryDelete from "../munim-routes/entries/[id]/delete";
 import * as health from "../munim-routes/health/route";
 import * as payStub from "../munim-routes/pay/[token]/stub/route";
 import * as pinelabsWebhook from "../munim-routes/pinelabs/webhook/route";
@@ -92,6 +93,7 @@ router.post("/login", rawBody, adapt(login.POST as WebHandler));
 router.post("/logout", rawBody, adapt(logout.POST as WebHandler));
 router.post("/demo/:slug", rawBody, adapt(demoSlug.POST as WebHandler));
 router.post("/entries", rawBody, adapt(entries.POST as WebHandler));
+router.post("/entries/:id/delete", rawBody, adapt(entryDelete.POST as WebHandler));
 router.post("/tell/parse", rawBody, adapt(tellParse.POST as WebHandler));
 router.post("/tell/transcribe", rawBody, adapt(tellTranscribe.POST as WebHandler));
 

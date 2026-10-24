@@ -37,15 +37,28 @@ export async function POST(req: Request) {
     return Response.json({ error: "Nothing to parse" }, { status: 400 });
   }
 
-  const customers = await query<{ name: string }>(
-    `select name from customers where merchant_id = $1`,
+  const customers = await query<{ name: string; kind: string; balance: string }>(
+    `select c.name, c.kind,
+       coalesce(sum(case
+         when c.kind = 'customer' and e.type = 'credit_given' then e.amount_paise
+         when c.kind = 'customer' and e.type = 'payment_received' then -e.amount_paise
+         when c.kind = 'supplier' and e.type in ('supplier_due', 'purchase') then e.amount_paise
+         when c.kind = 'supplier' and e.type = 'supplier_paid' then -e.amount_paise
+         else 0 end), 0) as balance
+     from customers c left join entries e on e.customer_id = c.id
+     where c.merchant_id = $1 group by c.id order by c.name limit 200`,
     [merchant.id]
   );
+  const parties = customers.map((c) => {
+    const rupees = Math.round(Number(c.balance) / 100).toLocaleString("en-IN");
+    const owes = Number(c.balance) > 0 ? (c.kind === "supplier" ? `; you owe them ₹${rupees}` : `; owes you ₹${rupees}`) : "";
+    return `- ${c.name} (${c.kind}${owes})`;
+  });
 
   try {
     const result = await parse(
       { text: typeof text === "string" ? text : undefined, imageBase64, imageMime, kind },
-      { language: merchant.language, businessType: merchant.business_type, knownNames: customers.map((c) => c.name) }
+      { language: merchant.language, businessType: merchant.business_type, knownNames: customers.map((c) => c.name), parties }
     );
     return Response.json(result);
   } catch (err) {

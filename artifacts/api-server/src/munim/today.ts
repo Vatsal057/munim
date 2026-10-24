@@ -18,9 +18,9 @@ type Templates = {
 const TEMPLATES: Record<"en" | "kn" | "hi", Templates> = {
   en: {
     gapPositive: (supplier, amountPaise, day, expectedPaise, gapPaise, n) =>
-      `You owe ${supplier} ${formatINR(amountPaise)} on ${day}. You'll likely collect ${formatINR(roundRupee(expectedPaise))} by then: ${formatINR(roundRupee(gapPaise))} short. Remind these ${n} customers.`,
+      `You owe ${supplier} ${formatINR(amountPaise)} on ${day}. You'll likely collect ${formatINR(roundRupee(expectedPaise))} by then: ${formatINR(roundRupee(gapPaise))} short. ${n === 1 ? "Remind this customer." : `Remind these ${n} customers.`}`,
     gapZero: (day, n, owedPaise) =>
-      `You're covered for ${day}. ${n} customers still owe you ${formatINR(owedPaise)}.`,
+      `You're covered for ${day}. ${n} ${n === 1 ? "customer still owes" : "customers still owe"} you ${formatINR(owedPaise)}.`,
     empty: "Tell me what happened today. Snap your khata page to start.",
   },
   kn: {

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
-import { CalendarClock, CheckCheck, FileText, Smartphone } from "lucide-react";
+import { CalendarClock, CheckCheck, FileText, Smartphone, Trash2 } from "lucide-react";
 import { formatINR } from "@/lib/money";
 import { postJSON, useView, type CustomerView } from "@/lib/api";
 import { Button, Initials, Notice, Page, Spinner, StateCard, TopBar, fmtDate } from "@/components/munim/ui";
@@ -55,7 +55,10 @@ function CustomerBody({ d }: { d: CustomerView }) {
                 <span className={cn("absolute -left-[23px] top-5 h-3 w-3 rounded-full ring-4 ring-background", incoming ? "bg-owed" : "bg-haldi")} />
                 <div className="flex items-baseline justify-between gap-3">
                   <span className="text-[15px] font-semibold capitalize text-ink">{e.type.replace(/_/g, " ")}</span>
-                  <span className="font-num text-lg font-bold text-ink">{formatINR(Number(e.amount_paise))}</span>
+                  <span className="flex items-center gap-1">
+                    <span className="font-num text-lg font-bold text-ink">{formatINR(Number(e.amount_paise))}</span>
+                    <DeleteEntry id={e.id} />
+                  </span>
                 </div>
                 <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
                   {fmtDate(e.created_at)}
@@ -195,5 +198,47 @@ function SettlePanel({ d, youOwe, amountPaise }: { d: CustomerView; youOwe: bool
           : "For cash or UPI paid straight to you. Pine Labs link payments are recorded automatically."}
       </p>
     </section>
+  );
+}
+
+/** Two taps, no browser dialog: first tap arms, second deletes. Disarms itself after 4 s. */
+function DeleteEntry({ id }: { id: number }) {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const [armed, setArmed] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  async function onClick() {
+    if (!armed) {
+      setArmed(true);
+      setTimeout(() => setArmed(false), 4000);
+      return;
+    }
+    setBusy(true);
+    const res = await postJSON(`entries/${id}/delete`).catch(() => null);
+    setBusy(false);
+    setArmed(false);
+    if (!res?.ok) {
+      toast({ title: "Couldn't delete", description: "Try again." });
+      return;
+    }
+    toast({ title: "Entry deleted", description: "Balances updated." });
+    await qc.invalidateQueries({ queryKey: ["view"] });
+  }
+
+  return (
+    <button
+      onClick={onClick}
+      disabled={busy}
+      aria-label={armed ? "Tap again to delete this entry" : "Delete entry"}
+      className={cn(
+        "inline-flex min-h-9 items-center gap-1 rounded-lg px-2 text-xs font-semibold transition-colors",
+        armed ? "bg-owe text-background" : "text-muted-foreground hover:bg-owe-soft hover:text-owe",
+      )}
+      data-testid={`button-delete-entry-${id}`}
+    >
+      {busy ? <Spinner /> : <Trash2 className="h-4 w-4" />}
+      {armed && "Delete?"}
+    </button>
   );
 }

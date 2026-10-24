@@ -49,6 +49,8 @@ export type ParseContext = {
   language: string;
   businessType: string;
   knownNames: string[];
+  /** e.g. "Suraj (supplier; you owe them ₹5,000)". Tells the model which way money flows with each person. */
+  parties?: string[];
 };
 
 const client = new Anthropic();
@@ -73,6 +75,9 @@ Rules:
 - If a khata page lists several names and amounts, create one entry per line.
 - Only use names you can actually read in the image or text. "Known names" are only for matching spelling; never pick a known name that is not written there.
 - A line with a minus sign, "paid", "jama" or "mila" next to it is a payment_received, not credit.
+- Direction of money matters most. "I paid X", "gave X", "X ko diya / de diya / de diye", "X ko bheja" = money left the shop. If X is a supplier or someone the shop owes, that is supplier_paid (party_kind supplier). Only call it credit_given if goods were given on credit to a customer.
+- "X paid", "X gave me", "X se mila", "X ne diya / de diya" = money came in: payment_received from X.
+- Prefer the person's existing role from the list of people above; never create a customer entry for someone who is listed only as a supplier unless the text clearly says they bought on credit.
 - Cash book pages (Date / Particulars / Debit / Credit / Balance): never create entries from the Balance column or for "Opening Balance" / "Closing Balance". "To Cash Sales" is a sale. "To Amount received from <name>" is payment_received from that name. "By Purchase ..." is supplier_paid (party = what was bought, e.g. "Stationery"). Other "By ..." expenses (rent, salary, electricity, miscellaneous) are supplier_paid with the expense as party_name. Put the row's date in due_date only if it is in the future.
 - Resolve relative dates ("Friday", "next week", "tomorrow") to an ISO date (YYYY-MM-DD), using the current date in Asia/Kolkata. If no date is mentioned, use null.
 - If you are not confident about an amount, name, or type, set confidence to "low". Set confidence to "high" only when the text/image is unambiguous.
@@ -110,7 +115,9 @@ function buildTask(input: ParseInput, ctx: ParseContext): string {
     SYSTEM_PROMPT,
     JSON_SHAPE_INSTRUCTIONS,
     `Shop business type: ${ctx.businessType}. Preferred language: ${ctx.language}.`,
-    ctx.knownNames.length ? `Known names: ${ctx.knownNames.join(", ")}.` : "",
+    ctx.parties?.length
+      ? `People in this khata (use to decide direction of money):\n${ctx.parties.join("\n")}`
+      : ctx.knownNames.length ? `Known names: ${ctx.knownNames.join(", ")}.` : "",
     `Input kind: ${input.kind}.`,
     input.text ? `Shopkeeper said: "${input.text}"` : "Read the attached image.",
   ]
@@ -216,7 +223,9 @@ export async function parse(input: ParseInput, ctx: ParseContext): Promise<Parse
     type: "text",
     text: [
       `Shop business type: ${ctx.businessType}. Preferred language: ${ctx.language}.`,
-      ctx.knownNames.length ? `Known names: ${ctx.knownNames.join(", ")}.` : "",
+      ctx.parties?.length
+      ? `People in this khata (use to decide direction of money):\n${ctx.parties.join("\n")}`
+      : ctx.knownNames.length ? `Known names: ${ctx.knownNames.join(", ")}.` : "",
       `Input kind: ${input.kind}.`,
       input.text ? `Shopkeeper said: "${input.text}"` : "Read the attached image.",
     ]
