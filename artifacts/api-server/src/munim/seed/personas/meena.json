@@ -1,0 +1,21 @@
+{
+  "slug": "meena",
+  "name": "Meena Shah",
+  "phone": "9000000003",
+  "business_name": "Meena's Crochet Corner",
+  "business_type": "side_hustle",
+  "language": "en",
+  "customers": [
+    { "name": "Divya", "kind": "customer" },
+    { "name": "Kiran", "kind": "customer" },
+    { "name": "Ayesha", "kind": "customer" },
+    { "name": "Yarn World", "kind": "supplier" }
+  ],
+  "entries": [
+    { "customer": "Yarn World", "type": "supplier_due", "amount_rupees": 1200, "created_offset_days": -3, "due_offset_days": 3 },
+
+    { "customer": "Divya", "type": "order", "amount_rupees": 1500, "created_offset_days": -6, "due_offset_days": 1, "note": "custom bag, advance pending" },
+    { "customer": "Kiran", "type": "order", "amount_rupees": 900, "created_offset_days": -4, "due_offset_days": 3, "note": "scarf set" },
+    { "customer": "Ayesha", "type": "order", "amount_rupees": 2200, "created_offset_days": -2, "due_offset_days": 5, "note": "wedding gift hamper" }
+  ]
+}

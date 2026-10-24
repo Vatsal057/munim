@@ -1,0 +1,1 @@
+- [Munim payment-safety rules](munim-port-decisions.md) — mark-paid must be one conditional transaction; stub checkout/webhook gated by PINELABS_MODE.

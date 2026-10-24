@@ -1,0 +1,19 @@
+{
+  "slug": "suresh",
+  "name": "Suresh Babu",
+  "phone": "9000000005",
+  "business_name": "Suresh Fruit Cart",
+  "business_type": "cart",
+  "language": "kn",
+  "customers": [
+    { "name": "Ganesh", "kind": "customer" },
+    { "name": "Lakshmi", "kind": "customer" },
+    { "name": "Mandi Supplier", "kind": "supplier" }
+  ],
+  "entries": [
+    { "customer": "Mandi Supplier", "type": "supplier_due", "amount_rupees": 1800, "created_offset_days": -1, "due_offset_days": 2 },
+    { "customer": "Ganesh", "type": "credit_given", "amount_rupees": 200, "created_offset_days": -15, "due_offset_days": -8, "paid_offset_days": -7 },
+    { "customer": "Ganesh", "type": "credit_given", "amount_rupees": 150, "created_offset_days": -2, "due_offset_days": 5 },
+    { "customer": "Lakshmi", "type": "credit_given", "amount_rupees": 120, "created_offset_days": -1, "due_offset_days": 6 }
+  ]
+}

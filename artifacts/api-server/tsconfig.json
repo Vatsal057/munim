@@ -5,6 +5,9 @@
     "tsBuildInfoFile": ".tsbuildinfo",
     "outDir": "dist",
     "rootDir": "src",
+    "paths": {
+      "@/lib/*": ["./src/munim/*"]
+    },
     "types": ["node"]
   },
   "include": ["src"],

@@ -2,6 +2,7 @@ import express, { type Express } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import router from "./routes";
+import munimRouter from "./routes/munim";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
@@ -26,6 +27,8 @@ app.use(
   }),
 );
 app.use(cors());
+// Munim handlers read raw request bodies themselves, so mount them before the body parsers.
+app.use("/api", munimRouter);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

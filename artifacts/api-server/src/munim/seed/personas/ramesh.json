@@ -1,0 +1,62 @@
+{
+  "slug": "ramesh",
+  "name": "Ramesh Kumar",
+  "phone": "9000000001",
+  "business_name": "Ramesh Kirana Store",
+  "business_type": "kirana",
+  "language": "en",
+  "customers": [
+    { "name": "Suresh", "kind": "customer" },
+    { "name": "Anita", "kind": "customer" },
+    { "name": "Manoj", "kind": "customer" },
+    { "name": "Latha", "kind": "customer" },
+    { "name": "Imran", "kind": "customer" },
+    { "name": "Geeta", "kind": "customer" },
+    { "name": "Vijay", "kind": "customer" },
+    { "name": "Fathima", "kind": "customer" },
+    { "name": "Nagesh", "kind": "customer" },
+    { "name": "Shanti", "kind": "customer" },
+    { "name": "Praveen", "kind": "customer" },
+    { "name": "Rukmini", "kind": "customer" },
+    { "name": "Shree Wholesale", "kind": "supplier" }
+  ],
+  "entries": [
+    { "customer": "Shree Wholesale", "type": "supplier_due", "amount_rupees": 8000, "created_offset_days": -2, "due_next_weekday": 5 },
+
+    { "customer": "Suresh", "type": "credit_given", "amount_rupees": 500, "created_offset_days": -40, "due_offset_days": -33, "paid_offset_days": -34 },
+    { "customer": "Suresh", "type": "credit_given", "amount_rupees": 700, "created_offset_days": -20, "due_offset_days": -13, "paid_offset_days": -14 },
+    { "customer": "Suresh", "type": "credit_given", "amount_rupees": 340, "created_offset_days": -2, "due_offset_days": 2 },
+
+    { "customer": "Anita", "type": "credit_given", "amount_rupees": 250, "created_offset_days": -35, "due_offset_days": -28, "paid_offset_days": -15 },
+    { "customer": "Anita", "type": "credit_given", "amount_rupees": 600, "created_offset_days": -18, "due_offset_days": -11, "paid_offset_days": -2 },
+    { "customer": "Anita", "type": "credit_given", "amount_rupees": 420, "created_offset_days": -1, "due_offset_days": 6 },
+
+    { "customer": "Manoj", "type": "credit_given", "amount_rupees": 150, "created_offset_days": -50, "due_offset_days": -43, "paid_offset_days": -42 },
+    { "customer": "Manoj", "type": "credit_given", "amount_rupees": 300, "created_offset_days": -25, "due_offset_days": -18, "paid_offset_days": -17 },
+    { "customer": "Manoj", "type": "credit_given", "amount_rupees": 180, "created_offset_days": -3, "due_offset_days": 4 },
+
+    { "customer": "Latha", "type": "credit_given", "amount_rupees": 900, "created_offset_days": -45, "due_offset_days": -38, "paid_offset_days": -20 },
+    { "customer": "Latha", "type": "credit_given", "amount_rupees": 1200, "created_offset_days": -38, "due_offset_days": -31 },
+
+    { "customer": "Imran", "type": "credit_given", "amount_rupees": 220, "created_offset_days": -9, "due_offset_days": -2, "paid_offset_days": -1 },
+    { "customer": "Imran", "type": "credit_given", "amount_rupees": 310, "created_offset_days": -2, "due_offset_days": 5 },
+
+    { "customer": "Geeta", "type": "credit_given", "amount_rupees": 150, "created_offset_days": -10, "due_offset_days": -3 },
+
+    { "customer": "Vijay", "type": "credit_given", "amount_rupees": 480, "created_offset_days": -60, "due_offset_days": -53, "paid_offset_days": -20 },
+    { "customer": "Vijay", "type": "credit_given", "amount_rupees": 260, "created_offset_days": -5, "due_offset_days": 2 },
+
+    { "customer": "Fathima", "type": "credit_given", "amount_rupees": 90, "created_offset_days": -6, "due_offset_days": 1 },
+
+    { "customer": "Nagesh", "type": "credit_given", "amount_rupees": 650, "created_offset_days": -70, "due_offset_days": -63, "paid_offset_days": -62 },
+    { "customer": "Nagesh", "type": "credit_given", "amount_rupees": 410, "created_offset_days": -4, "due_offset_days": 3 },
+
+    { "customer": "Shanti", "type": "credit_given", "amount_rupees": 130, "created_offset_days": -1, "due_offset_days": 6 },
+
+    { "customer": "Praveen", "type": "credit_given", "amount_rupees": 760, "created_offset_days": -55, "due_offset_days": -48, "paid_offset_days": -47 },
+    { "customer": "Praveen", "type": "credit_given", "amount_rupees": 540, "created_offset_days": -30, "due_offset_days": -23, "paid_offset_days": -22 },
+    { "customer": "Praveen", "type": "credit_given", "amount_rupees": 200, "created_offset_days": -2, "due_offset_days": 5 },
+
+    { "customer": "Rukmini", "type": "credit_given", "amount_rupees": 300, "created_offset_days": -3, "due_offset_days": 4 }
+  ]
+}

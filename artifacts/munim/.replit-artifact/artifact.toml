@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Munim"
+description = "AI bookkeeping and payment reminders for small Indian businesses. Record transactions, forecast cash gaps, approve reminders, and collect customer payments."
+version = "1.0.0"
+id = "artifacts/munim"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 24898
+
+[services.development]
+run = "pnpm --filter @workspace/munim run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/munim", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/munim/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24898"
+BASE_PATH = "/"
