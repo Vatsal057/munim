@@ -17,6 +17,14 @@ export function agenticorgConfigured(): boolean {
 }
 
 /**
+ * Canned AI answers, for tests and keyless local dev only. A leftover AI_STUB=1 on a deploy that
+ * has real AI configured used to answer every Tell with "Suresh owes you ₹500".
+ */
+export function aiStubbed(): boolean {
+  return process.env.AI_STUB === "1" && !process.env.ANTHROPIC_API_KEY && !agenticorgConfigured();
+}
+
+/**
  * Runs a text (optionally + image) task through the tenant's configured LLM via the
  * AgenticOrg agent, bypassing their own HITL/confidence gating (that's their dashboard's
  * concern, not ours — we have our own merchant-approval gate downstream).

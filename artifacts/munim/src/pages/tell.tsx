@@ -66,7 +66,10 @@ export default function Tell() {
 
   const [keys, setKeys] = useState<number[]>([]);
   const [recording, setRecording] = useState(false);
-  const holdingRef = useRef(false);
+  const recognitionRef = useRef<{ stop: () => void; onend: (() => void) | null } | null>(null);
+  const liveTextRef = useRef("");
+  const [liveText, setLiveText] = useState("");
+  const [heard, setHeard] = useState<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
 
@@ -120,8 +123,65 @@ export default function Tell() {
     await runParse(form, kind === "khata" ? "khata_photo" : "bill_photo");
   }
 
-  async function startRecording() {
-    if (recording || busy) return;
+  // Browser speech recognition runs *while* the merchant speaks (live captions), so it is a
+  // real fallback when ElevenLabs isn't configured instead of listening after they've stopped.
+  type Recognition = {
+    lang: string;
+    continuous: boolean;
+    interimResults: boolean;
+    start: () => void;
+    stop: () => void;
+    onresult: ((e: { resultIndex: number; results: ArrayLike<{ isFinal: boolean; 0: { transcript: string } }> }) => void) | null;
+    onend: (() => void) | null;
+    onerror: (() => void) | null;
+  };
+  function startLiveCaptions() {
+    const w = window as unknown as { webkitSpeechRecognition?: new () => Recognition; SpeechRecognition?: new () => Recognition };
+    const Ctor = w.SpeechRecognition || w.webkitSpeechRecognition;
+    liveTextRef.current = "";
+    setLiveText("");
+    if (!Ctor) return;
+    const rec = new Ctor();
+    rec.lang = "en-IN";
+    rec.continuous = true;
+    rec.interimResults = true;
+    let finals = "";
+    rec.onresult = (e) => {
+      let interim = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const r = e.results[i];
+        if (r.isFinal) finals += r[0].transcript + " ";
+        else interim += r[0].transcript;
+      }
+      liveTextRef.current = (finals + interim).trim();
+      setLiveText(liveTextRef.current);
+    };
+    rec.onerror = () => undefined;
+    try {
+      rec.start();
+      recognitionRef.current = rec;
+    } catch {
+      recognitionRef.current = null;
+    }
+  }
+
+  function stopLiveCaptions(): Promise<void> {
+    const rec = recognitionRef.current;
+    recognitionRef.current = null;
+    if (!rec) return Promise.resolve();
+    return new Promise((resolve) => {
+      const done = setTimeout(resolve, 1200); // last words arrive just after stop()
+      rec.onend = () => {
+        clearTimeout(done);
+        resolve();
+      };
+      rec.stop();
+    });
+  }
+
+  async function toggleRecording() {
+    if (busy) return;
+    if (recording) return stopRecording();
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       chunksRef.current = [];
@@ -131,9 +191,9 @@ export default function Tell() {
       mediaRecorderRef.current = recorder;
       setRecording(true);
       setError(null);
-      if (!holdingRef.current) void stopRecording();
+      startLiveCaptions();
     } catch {
-      setError("Couldn't access the microphone. Check browser permissions.");
+      setError("Couldn't access the microphone. Allow mic access in the browser, or type instead.");
     }
   }
 
@@ -146,66 +206,39 @@ export default function Tell() {
       recorder.onstop = () => resolve();
     });
     recorder.stop();
-    await stopped;
+    await Promise.all([stopped, stopLiveCaptions()]);
     recorder.stream.getTracks().forEach((track: MediaStreamTrack) => track.stop());
 
-    const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+    const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
     setBusy(true);
     setBusyMessage("Transcribing voice note…");
     setError(null);
 
-    const form = new FormData();
-    form.set("audio", blob, "audio.webm");
-
     let transcript = "";
-    try {
-      const transcribeRes = await apiFetch("tell/transcribe", { method: "POST", body: form });
-      if (transcribeRes.ok) {
-        const data = await transcribeRes.json();
-        transcript = data.text ?? "";
+    if (blob.size > 0) {
+      try {
+        const form = new FormData();
+        form.set("audio", blob, "audio.webm");
+        const transcribeRes = await apiFetch("tell/transcribe", { method: "POST", body: form });
+        if (transcribeRes.ok) transcript = ((await transcribeRes.json()) as { text?: string }).text?.trim() ?? "";
+      } catch {
+        // fall back to the live captions below
       }
-    } catch {
-      // transcribe endpoint failed, fallback to browser
     }
-
-    if (!transcript) {
-      transcript = await browserSpeechFallback();
-    }
+    if (!transcript) transcript = liveTextRef.current.trim();
 
     if (!transcript) {
       setBusy(false);
-      setError("Couldn't recognize any speech. Try speaking closer to mic or type.");
+      setError("Couldn't hear any words. Speak a little closer to the mic, or type it below.");
       return;
     }
 
     setText(transcript);
+    setHeard(transcript);
     const parseForm = new FormData();
     parseForm.set("text", transcript);
     parseForm.set("kind", "auto");
     await runParse(parseForm, "voice");
-  }
-
-  function browserSpeechFallback(): Promise<string> {
-    return new Promise((resolve) => {
-      type SpeechRecognitionResultLike = { results: { [i: number]: { [j: number]: { transcript: string } } } };
-      type Ctor = new () => {
-        lang: string;
-        start: () => void;
-        onresult: ((e: SpeechRecognitionResultLike) => void) | null;
-        onerror: (() => void) | null;
-      };
-      const w = window as unknown as { webkitSpeechRecognition?: Ctor; SpeechRecognition?: Ctor };
-      const SpeechRecognition = w.webkitSpeechRecognition || w.SpeechRecognition;
-      if (!SpeechRecognition) {
-        resolve("");
-        return;
-      }
-      const recognition = new SpeechRecognition();
-      recognition.lang = "en-IN";
-      recognition.onresult = (e) => resolve(e.results[0][0].transcript);
-      recognition.onerror = () => resolve("");
-      recognition.start();
-    });
   }
 
   function updateEntry(index: number, patch: Partial<Entry>) {
@@ -265,6 +298,13 @@ export default function Tell() {
         </div>
 
         <PageTitle title="Here's what I understood" sub="Review and edit if needed. Money is only saved after you tap Confirm." />
+
+        {heard && source === "voice" && (
+          <p className="rounded-2xl border border-input bg-card px-4 py-3 text-[15px] text-ink" data-testid="text-heard">
+            <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">You said </span>
+            <span className="font-display italic">"{heard}"</span>
+          </p>
+        )}
 
         {result.readback && (
           <div className="rise flex gap-3 rounded-2xl border border-haldi/40 bg-haldi-soft/70 p-4">
@@ -400,34 +440,22 @@ export default function Tell() {
           <span className="text-xs font-semibold text-muted-foreground">ಕನ್ನಡ · हिन्दी · English</span>
         </div>
         <button
-          onPointerDown={(e) => {
-            e.preventDefault();
-            holdingRef.current = true;
-            startRecording();
-          }}
-          onPointerUp={() => {
-            holdingRef.current = false;
-            stopRecording();
-          }}
-          onPointerLeave={() => {
-            holdingRef.current = false;
-            if (recording) stopRecording();
-          }}
+          onClick={toggleRecording}
           onContextMenu={(e) => e.preventDefault()}
           disabled={busy}
           data-testid="button-record"
-          aria-label={recording ? "Release to stop recording" : "Hold to speak"}
+          aria-label={recording ? "Stop recording" : "Start recording"}
           className={cn(
             "relative isolate my-2 flex h-32 w-32 touch-none select-none flex-col items-center justify-center gap-1 rounded-full shadow-lg transition-[transform,background-color] active:scale-95 disabled:opacity-50",
             recording ? "rec-ring bg-owe text-background" : "bg-ink text-background",
           )}
         >
           {recording ? <Square className="h-8 w-8 fill-current" /> : <Mic className="h-10 w-10 text-haldi" />}
-          <span className="text-sm font-bold">{recording ? "Release" : "Hold & speak"}</span>
+          <span className="text-sm font-bold">{recording ? "Tap to stop" : "Tap & speak"}</span>
         </button>
         <p className="min-h-6 text-[15px] text-muted-foreground" aria-live="polite">
           {recording ? (
-            <span className="font-semibold text-owe">Listening… release when done speaking</span>
+            <span className="font-semibold text-owe">{liveText ? `"${liveText}"` : "Listening… tap again when done"}</span>
           ) : (
             <span className="font-display italic">"Ramesh took 2 soaps, ₹340, Friday pay maadtaare"</span>
           )}

@@ -3,7 +3,7 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod/v4";
 import fs from "node:fs";
 import path from "node:path";
-import { agenticorgConfigured, runAgenticorgTask } from "./agenticorgLLM.ts";
+import { agenticorgConfigured, aiStubbed, runAgenticorgTask } from "./agenticorgLLM.ts";
 
 const ENTRY_TYPES = [
   "credit_given",
@@ -110,7 +110,7 @@ export class VisionUnavailableError extends Error {
 }
 
 export async function parse(input: ParseInput, ctx: ParseContext): Promise<ParseResultT> {
-  if (process.env.AI_STUB === "1") {
+  if (aiStubbed()) {
     const fixture = loadFixture(input.kind);
     return {
       ...fixture,

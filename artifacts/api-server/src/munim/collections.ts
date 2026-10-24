@@ -4,7 +4,7 @@ import { getCustomerBalances, getSupplierDues } from "./ledger";
 import { buildHistories, likelihoodToPayBy, forecastHorizon, type RawEntry } from "./forecast";
 import { formatINR } from "./money";
 import { logEvent } from "./events";
-import { agenticorgConfigured, runAgenticorgTask } from "./agenticorgLLM";
+import { agenticorgConfigured, aiStubbed, runAgenticorgTask } from "./agenticorgLLM";
 import { applyAgentDecision, buildDecisionTask } from "./agentDecision";
 
 export type Pick = {
@@ -101,7 +101,7 @@ export async function draftMessage(
   const amount = formatINR(amountPaise);
   const fallback = `Hi ${customer.name}, this is ${merchant.business_name}. A gentle reminder that ${amount} is due. Pay here: {PAY_LINK}. Thank you!`;
 
-  if (process.env.AI_STUB === "1") return fallback;
+  if (aiStubbed()) return fallback;
 
   if (!process.env.ANTHROPIC_API_KEY && agenticorgConfigured()) {
     try {
@@ -183,7 +183,7 @@ async function choosePicks(
   const { ranked, owedOutPaise, horizon } = await rankCandidates(merchantId);
   const builtin = () => ({ picks: heuristicPicks(ranked, owedOutPaise), decidedBy: "builtin" as const });
 
-  if (ranked.length === 0 || process.env.AI_STUB === "1" || !agenticorgConfigured()) return builtin();
+  if (ranked.length === 0 || aiStubbed() || !agenticorgConfigured()) return builtin();
 
   try {
     const candidates = ranked.slice(0, 15); // ponytail: top 15 keeps the prompt small; raise if merchants have long tails
