@@ -82,10 +82,15 @@ export async function home() {
     totalOwedToMePaise: totalOwedToMe,
   });
 
-  const pendingDrafts = await query<{ count: string }>(
-    `select count(*) from reminders where merchant_id = $1 and status = 'draft'`,
-    [merchant.id]
-  );
+  const [pendingDrafts, recent] = await Promise.all([
+    query<{ count: string }>(`select count(*) from reminders where merchant_id = $1 and status = 'draft'`, [merchant.id]),
+    query<{ id: number; customer_id: number; party_name: string; type: string; amount_paise: string; source: string; created_at: string }>(
+      `select e.id, e.customer_id, c.name as party_name, e.type, e.amount_paise, e.source, e.created_at
+       from entries e join customers c on c.id = e.customer_id
+       where e.merchant_id = $1 order by e.created_at desc, e.id desc limit 6`,
+      [merchant.id]
+    ),
+  ]);
 
   return Response.json({
     merchant: publicMerchant(merchant),
@@ -97,6 +102,7 @@ export async function home() {
     todayCard,
     remindCount: remindCandidates.length,
     draftCount: Number(pendingDrafts[0]?.count ?? 0),
+    recent: recent.map((e) => ({ ...e, amount_paise: Number(e.amount_paise) })),
   });
 }
 
@@ -185,11 +191,14 @@ export async function reminders() {
     status: string;
     pay_token: string | null;
     payment_url: string | null;
+    paid_at: string | null;
   }>(
+    // Paid reminders stay visible for a day so the merchant sees the loop close.
     `select r.id, r.customer_id, c.name as customer_name, c.phone as customer_phone,
-            r.amount_paise, r.reason, r.message, r.status, r.pay_token, r.payment_url
+            r.amount_paise, r.reason, r.message, r.status, r.pay_token, r.payment_url, r.paid_at
      from reminders r join customers c on c.id = r.customer_id
-     where r.merchant_id = $1 and r.status in ('draft', 'approved')
+     where r.merchant_id = $1
+       and (r.status in ('draft', 'approved') or (r.status = 'paid' and r.paid_at > now() - interval '1 day'))
      order by r.created_at desc`,
     [merchant.id]
   );

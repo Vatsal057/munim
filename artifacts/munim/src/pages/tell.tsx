@@ -82,7 +82,8 @@ export default function Tell() {
       const res = await apiFetch("tell/parse", { method: "POST", body });
       setBusy(false);
       if (!res.ok) {
-        setError("Couldn't read that clearly. Please try again or type directly.");
+        const msg = res.status === 422 ? ((await res.json().catch(() => null)) as { error?: string } | null)?.error : null;
+        setError(msg || "Couldn't read that clearly. Please try again or type directly.");
         return;
       }
       const data: ParseResult = await res.json();
@@ -235,7 +236,7 @@ export default function Tell() {
         return;
       }
       await qc.invalidateQueries({ queryKey: ["view"] });
-      navigate("/app/ledger");
+      navigate(`/app?added=${result.entries.length}`);
     } catch {
       setBusy(false);
       setError("Couldn't save entries. Please try again.");

@@ -37,11 +37,15 @@ async function getView<T>(path: string): Promise<T> {
 export const viewKey = (path: string) => ["view", path] as const;
 
 /** Read a server view. 401 sends the merchant to /signup (unless `publicView`). */
-export function useView<T>(path: string, opts: { publicView?: boolean } = {}) {
+export function useView<T>(
+  path: string,
+  opts: { publicView?: boolean; refetchInterval?: (data: T | undefined) => number | false } = {},
+) {
   const [, navigate] = useLocation();
   const q = useQuery<T, ApiError>({
     queryKey: viewKey(path),
     queryFn: () => getView<T>(path),
+    refetchInterval: opts.refetchInterval ? (query) => opts.refetchInterval!(query.state.data) : undefined,
     retry: (count, err) => err.status >= 500 && count < 1,
   });
   const status = q.error?.status;
@@ -71,6 +75,17 @@ export type HomeView = {
   todayCard: { message: string; cta: "review_reminders" | "remind_anyway" | "tell_me" | null; gapPaise: number };
   remindCount: number;
   draftCount: number;
+  recent: RecentEntry[];
+};
+
+export type RecentEntry = {
+  id: number;
+  customer_id: number;
+  party_name: string;
+  type: string;
+  amount_paise: number;
+  source: string;
+  created_at: string;
 };
 
 export type Party = {
@@ -103,6 +118,7 @@ export type Reminder = {
   status: "draft" | "approved" | string;
   pay_token: string | null;
   payment_url: string | null;
+  paid_at?: string | null;
 };
 export type RemindersView = { reminders: Reminder[]; draftCount: number };
 

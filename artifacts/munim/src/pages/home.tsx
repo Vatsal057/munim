@@ -1,7 +1,7 @@
-import { Link } from "wouter";
-import { ArrowRight, ArrowLeftRight, BellRing, Camera, ChevronRight, History, Mic, ShieldCheck, Sun } from "lucide-react";
+import { Link, useSearch } from "wouter";
+import { ArrowRight, ArrowLeftRight, BellRing, Camera, CheckCircle2, ChevronRight, History, Mic, ShieldCheck, Sun } from "lucide-react";
 import { formatINR } from "@/lib/money";
-import { useView, type HomeView } from "@/lib/api";
+import { useView, type HomeView, type RecentEntry } from "@/lib/api";
 import { Logo, Page } from "@/components/munim/ui";
 import { ViewGate } from "@/components/munim/view-gate";
 import { cn } from "@/lib/utils";
@@ -16,8 +16,73 @@ function greeting() {
   return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
 }
 
+const ENTRY_WORDS: Record<string, { label: string; sign: "+" | "-" | ""; tone: string }> = {
+  credit_given: { label: "took on credit", sign: "+", tone: "text-owed" },
+  payment_received: { label: "paid you", sign: "-", tone: "text-ink" },
+  purchase: { label: "bill on credit", sign: "+", tone: "text-owe" },
+  supplier_due: { label: "you owe", sign: "+", tone: "text-owe" },
+  supplier_paid: { label: "you paid", sign: "-", tone: "text-ink" },
+  order: { label: "new order", sign: "", tone: "text-ink" },
+  skip: { label: "skipped", sign: "", tone: "text-muted-foreground" },
+  sale: { label: "cash sale", sign: "", tone: "text-owed" },
+  wastage: { label: "wastage", sign: "", tone: "text-muted-foreground" },
+};
+
+function timeAgo(iso: string) {
+  const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.round(mins / 60);
+  return hrs < 24 ? `${hrs} h ago` : new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+}
+
+function RecentList({ recent, highlight }: { recent: RecentEntry[]; highlight: number }) {
+  if (recent.length === 0) return null;
+  return (
+    <section className="rise rounded-[1.5rem] border border-card-border bg-card p-2 shadow-xs" data-testid="section-recent">
+      <div className="flex items-center justify-between px-3 pb-1 pt-2">
+        <span className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">Just added</span>
+        <Link href="/app/activity" className="inline-flex min-h-10 items-center gap-1 text-sm font-semibold text-ink">
+          All activity <ChevronRight className="h-4 w-4" />
+        </Link>
+      </div>
+      <ul>
+        {recent.map((e, i) => {
+          const w = ENTRY_WORDS[e.type] ?? { label: e.type.replace(/_/g, " "), sign: "", tone: "text-ink" };
+          return (
+            <li key={e.id}>
+              <Link
+                href={`/app/customers/${e.customer_id}`}
+                className={cn(
+                  "flex min-h-14 items-center justify-between gap-3 rounded-2xl px-3 py-2.5 transition-colors hover:bg-secondary",
+                  i < highlight && "bg-owed-soft/70",
+                )}
+                data-testid={`row-recent-${e.id}`}
+              >
+                <span className="min-w-0">
+                  <span className="block truncate text-[15px] font-semibold text-ink">
+                    {e.party_name} <span className="font-normal text-muted-foreground">{w.label}</span>
+                  </span>
+                  <span className="block text-xs text-muted-foreground">
+                    {timeAgo(e.created_at)} · {e.source.replace(/_/g, " ")}
+                  </span>
+                </span>
+                <span className={cn("font-num shrink-0 text-lg font-bold", w.tone)}>
+                  {w.sign}
+                  {formatINR(e.amount_paise)}
+                </span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
 function HomeBody({ d }: { d: HomeView }) {
   const { merchant, todayCard } = d;
+  const added = Number(new URLSearchParams(useSearch()).get("added")) || 0;
   const gap = d.gapPaise ?? todayCard.gapPaise ?? 0;
   const short = gap > 0;
 
@@ -50,6 +115,15 @@ function HomeBody({ d }: { d: HomeView }) {
         )}
       </header>
 
+      {added > 0 && (
+        <div className="rise flex items-center gap-3 rounded-2xl border border-owed/30 bg-owed-soft px-4 py-3" role="status" data-testid="banner-added">
+          <CheckCircle2 className="h-5 w-5 shrink-0 text-owed" />
+          <p className="text-[15px] font-semibold text-ink">
+            Saved {added} {added === 1 ? "entry" : "entries"} to your khata. Balances and today's plan are updated.
+          </p>
+        </div>
+      )}
+
       {/* Daily Munim card */}
       <section
         data-testid="card-today"
@@ -64,7 +138,7 @@ function HomeBody({ d }: { d: HomeView }) {
           </span>
           {short ? (
             <span className="font-num rounded-full bg-owe-soft px-2.5 py-1 text-xs font-bold text-owe" data-testid="text-gap">
-              Likely short {formatINR(gap)}
+              Likely short {formatINR(Math.round(gap / 100) * 100)}
             </span>
           ) : (
             <span className="rounded-full bg-owed-soft px-2.5 py-1 text-xs font-bold text-owed">Covered this week</span>
@@ -173,6 +247,8 @@ function HomeBody({ d }: { d: HomeView }) {
           <span className="font-num text-2xl font-bold text-owe" data-testid="text-total-owe">{formatINR(d.totalIOwe)}</span>
         </Link>
       </section>
+
+      <RecentList recent={d.recent ?? []} highlight={added} />
 
       <nav className="flex flex-wrap items-center justify-between gap-2 text-sm">
         <Link href="/app/activity" data-testid="link-activity" className="inline-flex min-h-11 items-center gap-2 rounded-xl px-2 font-semibold text-muted-foreground hover:text-ink">

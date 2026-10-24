@@ -1,7 +1,7 @@
 import { logger } from "../../../lib/logger";
 import { ensureSchema, query } from "@/lib/db";
 import { getMerchant } from "@/lib/session";
-import { parse, type ParseKind } from "@/lib/parser";
+import { parse, VisionUnavailableError, type ParseKind } from "@/lib/parser";
 import { rateLimited } from "@/lib/rateLimit";
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -49,6 +49,7 @@ export async function POST(req: Request) {
     );
     return Response.json(result);
   } catch (err) {
+    if (err instanceof VisionUnavailableError) return Response.json({ error: err.message }, { status: 422 });
     logger.error({ err }, "request failed");
     return Response.json({ error: "Couldn't read that. Try again or type it." }, { status: 502 });
   }

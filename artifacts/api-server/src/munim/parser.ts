@@ -70,6 +70,8 @@ Entry types:
 Rules:
 - NEVER compute totals, sums, or balances. Copy each amount exactly as written or said.
 - If a khata page lists several names and amounts, create one entry per line.
+- Only use names you can actually read in the image or text. "Known names" are only for matching spelling; never pick a known name that is not written there.
+- A line with a minus sign, "paid", "jama" or "mila" next to it is a payment_received, not credit.
 - Resolve relative dates ("Friday", "next week", "tomorrow") to an ISO date (YYYY-MM-DD), using the current date in Asia/Kolkata. If no date is mentioned, use null.
 - If you are not confident about an amount, name, or type, set confidence to "low". Set confidence to "high" only when the text/image is unambiguous.
 - party_kind is "supplier" for purchase/supplier_due/supplier_paid entries, "customer" otherwise, unless context clearly says otherwise.
@@ -101,6 +103,12 @@ function matchKnownName(name: string, knownNames: string[]): string {
   return match ?? name.trim();
 }
 
+export class VisionUnavailableError extends Error {
+  constructor() {
+    super("Photo reading isn't switched on yet. Type or speak the entries instead.");
+  }
+}
+
 export async function parse(input: ParseInput, ctx: ParseContext): Promise<ParseResultT> {
   if (process.env.AI_STUB === "1") {
     const fixture = loadFixture(input.kind);
@@ -111,6 +119,12 @@ export async function parse(input: ParseInput, ctx: ParseContext): Promise<Parse
         party_name: matchKnownName(e.party_name, ctx.knownNames),
       })),
     };
+  }
+
+  // AgenticOrg's agent run is text-only: an image arrives as base64 text and the model invents
+  // names from the known-names list. Never guess money from a photo; ask for text instead.
+  if (input.imageBase64 && !process.env.ANTHROPIC_API_KEY) {
+    throw new VisionUnavailableError();
   }
 
   if (!process.env.ANTHROPIC_API_KEY && agenticorgConfigured()) {

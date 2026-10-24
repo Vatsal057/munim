@@ -1,7 +1,6 @@
 import { ensureSchema, query } from "@/lib/db";
 import { markReminderPaid } from "@/lib/payments";
 import { formatINR } from "@/lib/money";
-import { publicAppUrl } from "@/lib/pinelabs";
 
 type Row = { id: number; payment_ref: string | null; amount_paise: number; status: string; business_name: string; customer_name: string };
 
@@ -19,6 +18,9 @@ async function load(token: string): Promise<Row | undefined> {
 // The stub checkout exists only for test payments; it must never clear a debt in test/live mode.
 const stubOnly = () => (process.env.PINELABS_MODE || "stub") !== "stub";
 
+// Relative Location: lands on the same host the customer is already on.
+const seeOther = (location: string) => new Response(null, { status: 303, headers: { Location: location } });
+
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
 /**
@@ -30,7 +32,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
   const { token } = await params;
   const r = await load(token);
   if (!r) return new Response("Payment link not found", { status: 404 });
-  if (r.status === "paid") return Response.redirect(`${publicAppUrl()}/p/${token}`, 303);
+  if (r.status === "paid") return seeOther(`/p/${token}`);
 
   const amount = formatINR(Number(r.amount_paise));
   return new Response(
@@ -63,5 +65,5 @@ export async function POST(_req: Request, { params }: { params: Promise<{ token:
   const r = await load(token);
   if (!r) return new Response("Payment link not found", { status: 404 });
   await markReminderPaid(r.id, r.payment_ref, "payment_link", "customer");
-  return Response.redirect(`${publicAppUrl()}/p/${token}`, 303);
+  return seeOther(`/p/${token}`);
 }

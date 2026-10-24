@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { Bot, CheckCheck, CircleCheck, Inbox, Link2, MessageCircle, Send, Share2, Sparkles, X } from "lucide-react";
+import { Bot, CheckCheck, CircleCheck, Copy, ExternalLink, Inbox, Link2, MessageCircle, QrCode, Send, Sparkles, X } from "lucide-react";
 import { formatINR } from "@/lib/money";
-import { apiFetch, postJSON, useView, viewKey, type Reminder, type RemindersView } from "@/lib/api";
+import { apiUrl, postJSON, useView, type Reminder, type RemindersView } from "@/lib/api";
 import { Button, Initials, Notice, Page, PageTitle, Spinner, StateCard, TopBar } from "@/components/munim/ui";
 import { ViewGate } from "@/components/munim/view-gate";
 import { useToast } from "@/hooks/use-toast";
@@ -20,7 +20,10 @@ function buildWaMeUrl(phone: string | null, text: string): string {
 }
 
 export default function Reminders() {
-  const q = useView<RemindersView>("reminders");
+  // While any link is out, poll so the card flips to "Paid" the moment the customer pays.
+  const q = useView<RemindersView>("reminders", {
+    refetchInterval: (d) => (d?.reminders.some((r) => r.status === "approved") ? 3000 : false),
+  });
   return <ViewGate q={q}>{(d) => <RemindersBody d={d} />}</ViewGate>;
 }
 
@@ -63,58 +66,70 @@ function RemindersBody({ d }: { d: RemindersView }) {
   const reminders = d.reminders
     .filter((r) => !removed.has(r.id))
     .map((r) => {
-      const o = { ...r, amount_paise: Number(r.amount_paise), ...overrides[r.id] };
+      const o = { ...r, amount_paise: Number(r.amount_paise), ...(r.status === "draft" ? overrides[r.id] : undefined) };
       return edits[r.id] !== undefined && o.status === "draft" ? { ...o, message: edits[r.id] } : o;
     });
   const pending = reminders.filter((r) => r.status === "draft").length;
+  const waiting = reminders.filter((r) => r.status === "approved").length;
+  const paid = reminders.filter((r) => r.status === "paid");
+
+  // Celebrate payments that land while this screen is open.
+  const seenPaid = useRef<Set<number> | null>(null);
+  useEffect(() => {
+    const ids = new Set(paid.map((r) => r.id));
+    if (seenPaid.current) {
+      for (const r of paid) {
+        if (!seenPaid.current.has(r.id)) {
+          toast({ title: `${formatINR(r.amount_paise)} received`, description: `${r.customer_name} paid through the Pine Labs link. Khata updated.` });
+        }
+      }
+    }
+    seenPaid.current = ids;
+  }, [paid, toast]);
 
   function refresh() {
     void qc.invalidateQueries({ queryKey: ["view"] });
   }
 
-  async function approveAndSend(reminder: Reminder) {
+  async function approve(reminder: Reminder) {
     setBusyId(reminder.id);
     setError(null);
     try {
       const res = await postJSON(`reminders/${reminder.id}/approve`, { message: reminder.message });
       if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as { error?: string } | null;
         setBusyId(null);
-        setError("Couldn't approve that. Try again.");
+        setError(body?.error || "Couldn't approve that. Try again.");
         return;
       }
       const data = await res.json();
-      const approved: Reminder = { ...reminder, status: "approved", payment_url: data.payment_url, pay_token: data.pay_token, message: data.message ?? reminder.message };
-      setOverrides((o) => ({ ...o, [reminder.id]: { status: "approved", payment_url: approved.payment_url, pay_token: approved.pay_token, message: approved.message } }));
+      setOverrides((o) => ({ ...o, [reminder.id]: { status: "approved", payment_url: data.payment_url, pay_token: data.pay_token, message: data.message ?? reminder.message } }));
       setBusyId(null);
-      toast({ title: "Approved", description: `Pay link ready for ${reminder.customer_name}.` });
-      await share(approved);
-      void qc.invalidateQueries({ queryKey: viewKey("home") });
+      toast({ title: "Approved", description: `Pine Labs pay link ready for ${reminder.customer_name}. Send it below.` });
+      refresh();
     } catch {
       setBusyId(null);
       setError("Couldn't approve that. Try again.");
     }
   }
 
-  async function share(reminder: Reminder) {
-    if (!reminder.payment_url) return;
+  function logShare(id: number) {
+    void postJSON(`reminders/${id}/share`).catch(() => undefined);
+  }
+
+  function sendWhatsApp(r: Reminder) {
+    window.open(buildWaMeUrl(r.customer_phone, r.message), "_blank", "noopener");
+    logShare(r.id);
+  }
+
+  async function copyMessage(r: Reminder) {
     try {
-      if (navigator.canShare) {
-        const qrRes = await apiFetch(`reminders/${reminder.id}/qr`);
-        if (qrRes.ok) {
-          const blob = await qrRes.blob();
-          const file = new File([blob], "pay-qr.png", { type: "image/png" });
-          if (navigator.canShare({ files: [file], text: reminder.message })) {
-            await navigator.share({ files: [file], text: reminder.message });
-            await postJSON(`reminders/${reminder.id}/share`).catch(() => undefined);
-            return;
-          }
-        }
-      }
+      await navigator.clipboard.writeText(r.message);
+      toast({ title: "Copied", description: "Message with pay link copied. Paste it in any chat." });
+      logShare(r.id);
     } catch {
-      // user cancelled or share failed — fall through to wa.me
+      setError("Couldn't copy. Select the message and copy it manually.");
     }
-    window.open(buildWaMeUrl(reminder.customer_phone, reminder.message), "_blank");
-    await postJSON(`reminders/${reminder.id}/share`).catch(() => undefined);
   }
 
   async function reject(id: number) {
@@ -140,7 +155,6 @@ function RemindersBody({ d }: { d: RemindersView }) {
       const res = await postJSON(`reminders/${r.id}/mark-paid`);
       setBusyId(null);
       if (res.ok) {
-        setRemoved((s) => new Set(s).add(r.id));
         toast({ title: "Marked paid", description: `${formatINR(r.amount_paise)} from ${r.customer_name} cleared.` });
         refresh();
       } else setError("Couldn't mark that as paid. Try again.");
@@ -160,8 +174,13 @@ function RemindersBody({ d }: { d: RemindersView }) {
         <span className="font-num rounded-full bg-haldi-soft px-3 py-1 text-xs font-bold text-[hsl(28_60%_20%)]" data-testid="text-pending-count">
           {pending || d.draftCount} pending
         </span>
-        {reminders.length - pending > 0 && (
-          <span className="font-num rounded-full bg-owed-soft px-3 py-1 text-xs font-bold text-owed">{reminders.length - pending} sent</span>
+        {waiting > 0 && (
+          <span className="font-num rounded-full bg-secondary px-3 py-1 text-xs font-bold text-ink">{waiting} awaiting payment</span>
+        )}
+        {paid.length > 0 && (
+          <span className="font-num rounded-full bg-owed-soft px-3 py-1 text-xs font-bold text-owed">
+            {paid.length} paid · {formatINR(paid.reduce((s, r) => s + r.amount_paise, 0))}
+          </span>
         )}
       </div>
 
@@ -178,6 +197,8 @@ function RemindersBody({ d }: { d: RemindersView }) {
           <AnimatePresence initial={false}>
             {reminders.map((r, i) => {
               const approved = r.status === "approved";
+              const isPaid = r.status === "paid";
+              const locked = approved || isPaid;
               const busy = busyId === r.id;
               return (
                 <motion.li
@@ -188,27 +209,22 @@ function RemindersBody({ d }: { d: RemindersView }) {
                   exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.22 } }}
                   className={cn(
                     "relative flex flex-col gap-4 overflow-hidden rounded-[1.75rem] border bg-card p-4 shadow-sm",
-                    approved ? "border-owed/30" : "border-card-border",
+                    isPaid ? "border-owed/40 bg-owed-soft/40" : approved ? "border-ink/20" : "border-card-border",
                   )}
                   data-testid={`card-reminder-${r.id}`}
                 >
                   <div className="flex items-center gap-3">
-                    <Initials name={r.customer_name} tone={approved ? "owed" : "ink"} />
+                    <Initials name={r.customer_name} tone={locked ? "owed" : "ink"} />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[17px] font-bold text-ink">{r.customer_name}</p>
                       <p className="font-num text-xs text-muted-foreground">{r.customer_phone ? `+91 ${r.customer_phone}` : "No phone saved"}</p>
                     </div>
                     <div className="text-right">
                       <p className="font-num text-xl font-bold text-owed" data-testid={`text-amount-${r.id}`}>{formatINR(r.amount_paise)}</p>
-                      <span className="text-[11px] font-semibold text-muted-foreground">owes you</span>
+                      <span className="text-[11px] font-semibold text-muted-foreground">{isPaid ? "received" : "owes you"}</span>
                     </div>
                   </div>
 
-                  {approved && (
-                    <span className="stamp absolute right-4 top-16 rounded-md border-2 border-owed px-2 py-0.5 text-xs font-bold uppercase tracking-widest text-owed">
-                      Approved
-                    </span>
-                  )}
 
                   <div className="flex items-start gap-2.5 rounded-2xl bg-haldi-soft/60 px-3.5 py-3">
                     <Bot className="mt-0.5 h-4 w-4 shrink-0 text-[hsl(28_60%_30%)]" />
@@ -223,51 +239,57 @@ function RemindersBody({ d }: { d: RemindersView }) {
                       <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">
                         <MessageCircle className="h-3.5 w-3.5" /> WhatsApp message
                       </span>
-                      <span className="text-xs text-muted-foreground">{approved ? "Locked" : "Tap to edit"}</span>
+                      <span className="text-xs text-muted-foreground">{locked ? "Approved by you" : "Tap to edit"}</span>
                     </div>
-                    <div className={cn("rounded-2xl rounded-tl-md border p-3", approved ? "border-owed/20 bg-owed-soft/50" : "border-input bg-background/60 focus-within:border-ink")}>
+                    <div className={cn("rounded-2xl rounded-tl-md border p-3", locked ? "border-owed/20 bg-owed-soft/50" : "border-input bg-background/60 focus-within:border-ink")}>
                       <textarea
                         value={r.message}
                         onChange={(e) => setEdits((m) => ({ ...m, [r.id]: e.target.value }))}
-                        disabled={approved}
-                        rows={4}
+                        disabled={locked}
+                        rows={isPaid ? 2 : 4}
                         className="w-full resize-none bg-transparent text-[15px] leading-relaxed text-ink focus:outline-none disabled:opacity-90"
                         placeholder="Draft message..."
                         data-testid={`input-message-${r.id}`}
                       />
                       <div className="flex items-center justify-between border-t border-border pt-2 text-[11px] text-muted-foreground">
                         <span className="flex items-center gap-1">
-                          <Link2 className="h-3 w-3" /> Carries payment link & UPI QR
+                          <Link2 className="h-3 w-3" /> {locked ? "Includes Pine Labs pay link" : "Pay link is added when you approve"}
                         </span>
                         <span className="font-num">{r.message.length}</span>
                       </div>
                     </div>
                   </div>
 
-                  {!approved ? (
+                  {isPaid ? (
+                    <div className="flex items-center gap-2 rounded-2xl bg-owed px-4 py-3 text-background" data-testid={`status-paid-${r.id}`}>
+                      <CircleCheck className="h-5 w-5 shrink-0" />
+                      <p className="text-[15px] font-semibold">
+                        Paid {r.paid_at ? new Date(r.paid_at).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" }) : ""} · due cleared from khata
+                      </p>
+                    </div>
+                  ) : approved ? (
+                    <SendPanel
+                      r={r}
+                      busy={busy}
+                      onWhatsApp={() => sendWhatsApp(r)}
+                      onCopy={() => copyMessage(r)}
+                      onMarkPaid={() => markPaid(r)}
+                    />
+                  ) : (
                     <div className="flex gap-2">
-                      <Button variant="owed" className="flex-1" onClick={() => approveAndSend(r)} disabled={busy || !r.message.trim()} data-testid={`button-approve-${r.id}`}>
+                      <Button variant="owed" className="flex-1" onClick={() => approve(r)} disabled={busy || !r.message.trim()} data-testid={`button-approve-${r.id}`}>
                         {busy ? (
                           <>
-                            <Spinner /> Preparing…
+                            <Spinner /> Creating pay link…
                           </>
                         ) : (
                           <>
-                            <Send className="h-4 w-4" /> Approve & send
+                            <Send className="h-4 w-4" /> Approve
                           </>
                         )}
                       </Button>
                       <Button variant="outline" onClick={() => reject(r.id)} disabled={busy} aria-label="Dismiss" data-testid={`button-reject-${r.id}`} className="px-4">
                         <X className="h-4 w-4" /> Dismiss
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-2 gap-2">
-                      <Button variant="ink" onClick={() => share(r)} data-testid={`button-share-${r.id}`}>
-                        <Share2 className="h-4 w-4" /> Share again
-                      </Button>
-                      <Button variant="outline" onClick={() => markPaid(r)} disabled={busy} className="border-owed/40 text-owed hover:bg-owed-soft" data-testid={`button-mark-paid-${r.id}`}>
-                        {busy ? <Spinner /> : <CheckCheck className="h-4 w-4" />} Mark paid
                       </Button>
                     </div>
                   )}
@@ -282,5 +304,70 @@ function RemindersBody({ d }: { d: RemindersView }) {
         <CircleCheck className="h-4 w-4 text-owed" /> Munim never sends anything without you.
       </p>
     </Page>
+  );
+}
+
+function SendPanel({
+  r,
+  busy,
+  onWhatsApp,
+  onCopy,
+  onMarkPaid,
+}: {
+  r: Reminder;
+  busy: boolean;
+  onWhatsApp: () => void;
+  onCopy: () => void;
+  onMarkPaid: () => void;
+}) {
+  const [showQr, setShowQr] = useState(false);
+  return (
+    <div className="flex flex-col gap-3 rounded-2xl border border-input bg-background/70 p-3" data-testid={`panel-send-${r.id}`}>
+      <div className="flex items-center gap-2 text-sm font-semibold text-ink">
+        <span className="relative flex h-2.5 w-2.5">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-haldi opacity-75 motion-reduce:animate-none" />
+          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-haldi" />
+        </span>
+        Waiting for {r.customer_name.split(" ")[0]} to pay · updates live
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <Button variant="owed" onClick={onWhatsApp} data-testid={`button-whatsapp-${r.id}`}>
+          <MessageCircle className="h-4 w-4" /> WhatsApp
+        </Button>
+        <Button variant="outline" onClick={onCopy} data-testid={`button-copy-${r.id}`}>
+          <Copy className="h-4 w-4" /> Copy message
+        </Button>
+        {r.pay_token && (
+          <a
+            href={`${import.meta.env.BASE_URL}p/${r.pay_token}`}
+            target="_blank"
+            rel="noopener"
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-input bg-card px-4 text-[15px] font-semibold text-ink"
+            data-testid={`link-customer-view-${r.id}`}
+          >
+            <ExternalLink className="h-4 w-4" /> Customer's view
+          </a>
+        )}
+        <Button variant="outline" onClick={() => setShowQr((v) => !v)} aria-expanded={showQr} data-testid={`button-qr-${r.id}`}>
+          <QrCode className="h-4 w-4" /> {showQr ? "Hide QR" : "Show QR"}
+        </Button>
+      </div>
+      {showQr && (
+        <div className="flex items-center gap-4 rounded-2xl bg-card p-3">
+          <img src={apiUrl(`reminders/${r.id}/qr`)} alt={`QR code to pay ${formatINR(r.amount_paise)}`} className="h-32 w-32 rounded-lg" />
+          <p className="text-sm leading-snug text-muted-foreground">
+            Customer at the counter? They scan this with their phone camera and pay {formatINR(r.amount_paise)} through Pine Labs.
+          </p>
+        </div>
+      )}
+      <button
+        onClick={onMarkPaid}
+        disabled={busy}
+        className="inline-flex min-h-10 items-center justify-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-ink disabled:opacity-60"
+        data-testid={`button-mark-paid-${r.id}`}
+      >
+        {busy ? <Spinner /> : <CheckCheck className="h-4 w-4" />} Paid in cash? Mark paid
+      </button>
+    </div>
   );
 }
