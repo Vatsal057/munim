@@ -25,6 +25,8 @@ services:
         sync: false
       - key: AGENTICORG_BASE_URL
         value: https://agenticorg.hackathon.pinelabs.com
+      - key: GEMINI_API_KEY # reads khata / bill photos
+        sync: false
       - key: ELEVENLABS_API_KEY
         sync: false
       - key: AGENT_API_KEY

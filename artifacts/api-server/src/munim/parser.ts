@@ -103,6 +103,40 @@ function matchKnownName(name: string, knownNames: string[]): string {
   return match ?? name.trim();
 }
 
+function buildTask(input: ParseInput, ctx: ParseContext): string {
+  return [
+    SYSTEM_PROMPT,
+    JSON_SHAPE_INSTRUCTIONS,
+    `Shop business type: ${ctx.businessType}. Preferred language: ${ctx.language}.`,
+    ctx.knownNames.length ? `Known names: ${ctx.knownNames.join(", ")}.` : "",
+    `Input kind: ${input.kind}.`,
+    input.text ? `Shopkeeper said: "${input.text}"` : "Read the attached image.",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+/** Gemini reads the photo (khata page, bill, UPI slip). REST, no SDK: one call, JSON out. */
+async function runGemini(task: string, imageBase64: string, mime: string): Promise<string> {
+  const model = process.env.GEMINI_MODEL || "gemini-flash-latest";
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-goog-api-key": process.env.GEMINI_API_KEY! },
+    body: JSON.stringify({
+      contents: [{ role: "user", parts: [{ inline_data: { mime_type: mime, data: imageBase64 } }, { text: task }] }],
+      generationConfig: { responseMimeType: "application/json", temperature: 0 },
+    }),
+  });
+  const body = (await res.json().catch(() => ({}))) as {
+    candidates?: { content?: { parts?: { text?: string }[] } }[];
+    error?: { message?: string };
+  };
+  if (!res.ok) throw new Error(`Gemini ${res.status}: ${body.error?.message ?? "request failed"}`);
+  const text = body.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
+  if (!text) throw new Error("Gemini returned no text");
+  return text;
+}
+
 export class VisionUnavailableError extends Error {
   constructor() {
     super("Photo reading isn't switched on yet. Type or speak the entries instead.");
@@ -122,22 +156,18 @@ export async function parse(input: ParseInput, ctx: ParseContext): Promise<Parse
   }
 
   // AgenticOrg's agent run is text-only: an image arrives as base64 text and the model invents
-  // names from the known-names list. Never guess money from a photo; ask for text instead.
+  // names from the known-names list. Photos go to a vision model; without one, ask for text.
   if (input.imageBase64 && !process.env.ANTHROPIC_API_KEY) {
-    throw new VisionUnavailableError();
+    if (!process.env.GEMINI_API_KEY) throw new VisionUnavailableError();
+    const parsed = ParseResult.parse(extractJson(await runGemini(buildTask(input, ctx), input.imageBase64, input.imageMime!)));
+    return {
+      ...parsed,
+      entries: parsed.entries.map((e) => ({ ...e, party_name: matchKnownName(e.party_name, ctx.knownNames) })),
+    };
   }
 
   if (!process.env.ANTHROPIC_API_KEY && agenticorgConfigured()) {
-    const task = [
-      SYSTEM_PROMPT,
-      JSON_SHAPE_INSTRUCTIONS,
-      `Shop business type: ${ctx.businessType}. Preferred language: ${ctx.language}.`,
-      ctx.knownNames.length ? `Known names: ${ctx.knownNames.join(", ")}.` : "",
-      `Input kind: ${input.kind}.`,
-      input.text ? `Shopkeeper said: "${input.text}"` : "Read the attached image.",
-    ]
-      .filter(Boolean)
-      .join("\n\n");
+    const task = buildTask(input, ctx);
 
     const image =
       input.imageBase64 && input.imageMime ? { base64: input.imageBase64, mime: input.imageMime } : undefined;
