@@ -31,3 +31,8 @@
 - Music: warm Indian lo-fi, santoor/sitar over tabla, 92 BPM; generated bed has phrase onsets every ~1.3 s; beat drop at 5.25 s; energy tails off from 25.6 s.
 - No voiceover or SFX (not requested).
 - Playback file: bg_music.mp3
+
+## REVISION: product demo for judges (supersedes shots above)
+Audio: modern minimal electric-piano/synth, 120 BPM, no ethnic instruments. 40 s.
+Shots (cuts on 2 s bars): 1 Today briefing 0-6; 2 Tell Munim 6-14; 3 Approve reminders 14-22; 4 Customer pay page (test mode) 22-30; 5 Gap closes 30-36; 6 Recap 36-40.
+Each shot: real app screens in a phone frame with step caption, tap indicators, no ad copy.

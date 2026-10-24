@@ -1,1 +1,2 @@
 - [Munim payment-safety rules](munim-port-decisions.md) — mark-paid must be one conditional transaction; stub checkout/webhook gated by PINELABS_MODE.
+- [Munim video purpose](munim-video-purpose.md) — landscape product demo for judges, not an advertisement; no traditional Indian soundtrack.

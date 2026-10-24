@@ -1,64 +1,41 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { Mic, Camera, Type, Check } from 'lucide-react';
 import { useSceneTimer } from '@/lib/video';
+import { Phone, Caption, Tap, Shell, card } from '../Demo';
 
-const EASE = [0.22, 1, 0.36, 1] as const;
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-// chart coords in a 1000x500 viewBox; zero line at y=300
-const PTS = [[40, 180], [190, 210], [340, 250], [490, 430], [640, 380], [790, 270], [940, 200]];
-const PATH = 'M' + PTS.map((p) => p.join(',')).join(' L');
-
+const ROWS = [['Ramesh', 'chawal 2 bori', '₹1,240'], ['Lakshmi Tiffin', 'tiffin', '₹860'], ['Pooja Tailors', 'blouse stitching', '₹2,150']];
 export function Scene2() {
-  const [beat, setBeat] = useState(0);
-  useSceneTimer([
-    { time: 250, callback: () => setBeat(1) },
-    { time: 2500, callback: () => setBeat(2) },
-    { time: 3300, callback: () => setBeat(3) },
-    { time: 4450, callback: () => setBeat(4) },
-  ]);
+  const [b, setB] = useState(0);
+  useSceneTimer([{ time: 700, callback: () => setB(1) }, { time: 2800, callback: () => setB(2) }, { time: 3500, callback: () => setB(3) }, { time: 4200, callback: () => setB(4) }, { time: 5000, callback: () => setB(5) }, { time: 6200, callback: () => setB(6) }]);
   return (
-    <motion.section className="absolute inset-0 overflow-hidden paper ledger grain"
-      initial={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.4 } }}>
-      <motion.div className="absolute inset-0" animate={beat >= 4 ? { scale: 0.35, x: '-8vw', y: '14vh', opacity: 0 } : { scale: 1 }}
-        transition={{ duration: 0.75, ease: [0.7, 0, 0.3, 1] }} style={{ transformOrigin: '52% 78%' }}>
-        <motion.div className="absolute f-mono" style={{ left: '12vmin', top: '7vh', fontSize: '2vmin', letterSpacing: '0.14em', color: 'var(--muted)' }}
-          initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.4 }}>
-          THIS WEEK · CASH IN HAND
-        </motion.div>
-        <svg viewBox="0 0 1000 500" className="absolute" style={{ left: '24vw', top: '14vh', width: '70vw', height: '64vh', overflow: 'visible' }}>
-          <line x1="0" x2="1000" y1="300" y2="300" stroke="var(--ink)" strokeOpacity=".35" strokeWidth="2" strokeDasharray="8 10" />
-          <text x="1000" y="292" textAnchor="end" fill="var(--muted)" style={{ font: '600 18px JetBrains Mono' }}>₹0</text>
-          <motion.path d="M340,250 L490,430 L640,380 L700,300 L280,300 Z" fill="var(--owe)" fillOpacity=".22"
-            initial={{ opacity: 0 }} animate={{ opacity: beat >= 2 ? 1 : 0 }} transition={{ duration: 0.5 }} />
-          <motion.path d={PATH} fill="none" stroke="var(--ink)" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round"
-            initial={{ pathLength: 0 }} animate={{ pathLength: beat >= 1 ? 1 : 0 }} transition={{ duration: 2.1, ease: [0.45, 0, 0.3, 1] }} />
-          {PTS.map(([x], i) => (
-            <motion.text key={DAYS[i]} x={x} y={490} textAnchor="middle" fill={i === 3 ? 'var(--owe)' : 'var(--ink)'}
-              style={{ font: `${i === 3 ? 700 : 500} 26px Mukta` }}
-              initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 + i * 0.28, duration: 0.3 }}>
-              {DAYS[i]}
-            </motion.text>
-          ))}
-          <motion.circle cx="490" cy="430" r="14" fill="var(--owe)"
-            initial={{ scale: 0 }} animate={{ scale: beat >= 2 ? [0, 1.6, 1] : 0 }} transition={{ duration: 0.5 }} />
-          <motion.circle cx="490" cy="430" r="14" fill="none" stroke="var(--owe)" strokeWidth="3"
-            animate={beat >= 2 ? { scale: [1, 3.2], opacity: [0.7, 0] } : { opacity: 0 }} transition={{ duration: 1.3, repeat: Infinity }} />
-        </svg>
-        <motion.div className="absolute" style={{ left: '54vw', top: '73vh', transformOrigin: 'left top' }}
-          initial={{ scale: 1.6, opacity: 0, rotate: -10 }} animate={beat >= 2 ? { scale: 1, opacity: 1, rotate: -4 } : {}}
-          transition={{ type: 'spring', stiffness: 300, damping: 16 }}>
-          <div className="f-mono" style={{ fontSize: '4.2vmin', fontWeight: 700, color: 'var(--owe)', border: '0.5vmin solid var(--owe)', padding: '0.6vmin 2vmin', borderRadius: '1vmin', background: 'var(--owe-soft)' }}>
-            ₹18,400 short · Thu
-          </div>
-        </motion.div>
-        <div className="absolute" style={{ left: '12vmin', bottom: '10vh', width: '34vw' }}>
-          <motion.div className="f-display" style={{ fontSize: '9vmin', lineHeight: 0.98, color: 'var(--ink)' }}
-            initial={{ clipPath: 'inset(0 0 100% 0)', y: '3vh' }} animate={beat >= 3 ? { clipPath: 'inset(0 0 0% 0)', y: 0 } : {}}
-            transition={{ duration: 0.6, ease: EASE }}>
-            The weekly <em style={{ color: 'var(--owe)' }}>cash gap.</em>
-          </motion.div>
+    <Shell>
+      <Caption side="left" step="02 / 05" title={<>Tell Munim <em style={{ color: 'var(--owe)' }}>what happened.</em></>} body="No typing needed. Speak, snap the khata page, or text, in Hindi, Kannada or English." items={['Voice note', 'Photo of the khata page', 'Plain text']} beat={b >= 1 ? 3 : 0} />
+      <Phone side="right">
+        <div className="flex" style={{ gap: '1vmin' }}>
+          {[[Mic, 'Voice'], [Camera, 'Photo'], [Type, 'Text']].map(([I, l], i) => { const Ic = I as typeof Mic; return (
+            <div key={l as string} className="flex items-center justify-center" style={{ flex: 1, height: '6vmin', borderRadius: 99, gap: '0.8vmin', fontSize: '1.8vmin', fontWeight: 700, background: i === 0 ? 'var(--ink)' : '#e8e2d4', color: i === 0 ? 'var(--paper)' : 'var(--ink)' }}><Ic style={{ width: '2vmin' }} />{l as string}</div>); })}
         </div>
-      </motion.div>
-    </motion.section>
+        <div className="flex flex-col items-center" style={{ marginTop: '1vmin' }}>
+          <div className="relative flex items-center justify-center" style={{ width: '12vmin', height: '12vmin' }}>
+            {[0, 1].map((k) => <motion.div key={k} className="absolute inset-0 rounded-full" style={{ background: 'var(--owe)' }} animate={b >= 1 && b < 3 ? { scale: [1, 1.8], opacity: [0.45, 0] } : { opacity: 0 }} transition={{ duration: 1.4, repeat: Infinity, delay: k * 0.7 }} />)}
+            <div className="relative rounded-full flex items-center justify-center" style={{ width: '12vmin', height: '12vmin', background: 'var(--owe)' }}><Mic color="#fff" style={{ width: '5vmin' }} /></div>
+          </div>
+          <div className="f-mono" style={{ fontSize: '1.5vmin', color: 'var(--muted)', marginTop: '1vmin' }}>{b < 1 ? 'TAP TO SPEAK' : b < 3 ? 'LISTENING…' : 'UNDERSTOOD'}</div>
+        </div>
+        <motion.div style={{ ...card, padding: '1.8vmin', fontSize: '2.2vmin', fontWeight: 600, lineHeight: 1.3 }} initial={{ opacity: 0 }} animate={b >= 1 ? { opacity: 1 } : {}}>
+          “Ramesh ne 2 bori chawal liye, ₹1,240 baaki. Lakshmi ₹860…”
+        </motion.div>
+        {ROWS.map(([n, w, a], i) => (
+          <motion.div key={n} className="flex justify-between items-center" style={{ ...card, padding: '1.4vmin 2vmin' }} initial={{ opacity: 0, y: 14 }} animate={b >= i + 3 ? { opacity: 1, y: 0 } : {}}>
+            <div><div style={{ fontSize: '2.1vmin', fontWeight: 700 }}>{n}</div><div style={{ fontSize: '1.5vmin', color: 'var(--muted)' }}>{w}</div></div>
+            <span className="f-mono" style={{ fontSize: '2.2vmin', fontWeight: 700, color: 'var(--owed)' }}>{a}</span>
+          </motion.div>))}
+        <div className="relative flex items-center justify-center" style={{ height: '6.4vmin', borderRadius: '2vmin', fontSize: '2.1vmin', fontWeight: 700, marginTop: 'auto', background: b >= 6 ? 'var(--owed)' : 'var(--ink)', color: 'var(--paper)', gap: '1vmin' }}>
+          {b >= 6 && <Check style={{ width: '2.4vmin' }} />}{b >= 6 ? 'Saved to khata' : 'Confirm 3 entries'}
+          <Tap show={b >= 5} x="65%" y="50%" />
+        </div>
+      </Phone>
+    </Shell>
   );
 }

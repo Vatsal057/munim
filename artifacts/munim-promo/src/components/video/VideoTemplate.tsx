@@ -10,14 +10,14 @@ import { Scene4 } from './video_scenes/Scene4';
 import { Scene5 } from './video_scenes/Scene5';
 import { Scene6 } from './video_scenes/Scene6';
 
-// Cuts sit on measured music onsets: 5.25, 10.45, 15.70, 20.90, 25.60 s
+// 120 BPM bar = 2 s; cuts land on bar lines
 export const SCENE_DURATIONS = {
-  hook: 5250,
-  gap: 5200,
-  tell: 5250,
-  agent: 5200,
-  paid: 4700,
-  lockup: 4400,
+  hook: 6000,
+  gap: 8000,
+  tell: 8000,
+  agent: 8000,
+  paid: 6000,
+  lockup: 4000,
 };
 
 const SCENE_COMPONENTS: Record<string, ComponentType> = {
