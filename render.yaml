@@ -15,7 +15,7 @@ services:
       - key: ANTHROPIC_MODEL
         value: claude-sonnet-5-5
       - key: AI_STUB
-        value: "0"
+        value: "1" # no ANTHROPIC_API_KEY yet — flip to "0" once one's set
       - key: ELEVENLABS_API_KEY
         sync: false
       - key: PINELABS_MODE
