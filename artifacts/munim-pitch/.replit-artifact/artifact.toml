@@ -1,0 +1,28 @@
+kind = "slides"
+previewPath = "/munim-pitch/"
+title = "Munim — Investor & Partner Pitch"
+description = "A 10-slide pitch in Munim's bahi-khata visual style: weekly cash gaps, merchant users, human-approved reminders, demo screens, payment flow and proposed business model."
+version = "1.0.0"
+id = "artifacts/munim-pitch"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/munim-pitch/" ]
+localPort = 18980
+
+[services.development]
+run = "pnpm --filter @workspace/munim-pitch run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/munim-pitch", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/munim-pitch/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18980"
+BASE_PATH = "/munim-pitch/"

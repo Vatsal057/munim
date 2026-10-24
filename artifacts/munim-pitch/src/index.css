@@ -1,0 +1,67 @@
+@import 'tailwindcss';
+
+@theme inline {
+  --color-primary: var(--slide-primary);
+  --color-accent: var(--slide-accent);
+  --color-bg: var(--slide-bg);
+  --color-text: var(--slide-text);
+  --color-muted: var(--slide-muted);
+  --font-display: var(--font-display-family);
+  --font-body: var(--font-body-family);
+}
+
+:root {
+  /* Replace these with brand colors */
+  --slide-primary: hsl(234 48% 26%);
+  --slide-accent: hsl(38 92% 52%);
+  --slide-bg: hsl(40 45% 95%);
+  --slide-text: hsl(232 38% 16%);
+  --slide-muted: hsl(230 14% 38%);
+  --font-display-family: 'Fraunces', Georgia, serif;
+  --font-body-family: 'Mukta', sans-serif;
+  color-scheme: light;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--slide-bg);
+  color: var(--slide-text);
+}
+
+.slide {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.slide-viewer {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+* { box-sizing: border-box; }
+.deck { padding: 7vh 6vw; font-family: var(--font-body-family); background: var(--slide-bg); }
+.deck h1, .deck h2, .deck h3, .deck p { margin: 0; }
+.deck h2 { font: 600 4vw/1.13 var(--font-display-family); color: var(--slide-primary); margin-bottom: 5vh; }
+.deck p, .deck li { font-size: 2vw; line-height: 1.28; text-wrap: pretty; }
+.deck .caption { font-size: 1.5vw; line-height: 1.25; color: var(--slide-muted); }
+.deck .display { font: 600 6vw/1.08 var(--font-display-family); }
+.deck .subhead { font: 600 2.7vw/1.2 var(--font-display-family); }
+.deck .ink-panel { background: var(--slide-primary); color: var(--slide-bg); padding: 3vw; }
+.deck .haldi-panel { background: var(--slide-accent); padding: 3vw; }
+.deck .paper { background: hsl(42 60% 98.5%); border: 1px solid hsl(36 26% 84%); border-radius: 1.6vw; padding: 2.4vw; }
+.deck .phone { border: .45vw solid var(--slide-primary); border-radius: 2.6vw; padding: 2.4vw; background: hsl(42 60% 98.5%); }
+.deck .rule { border-top: 1px solid hsl(36 26% 78%); padding-top: 2vh; }
+.deck .owed { color: hsl(152 58% 27%); }
+.deck .owe { color: hsl(356 64% 41%); }
+.deck .rows { display: flex; flex-direction: column; gap: 3vh; }
+.deck .rows p { padding-bottom: 2vh; border-bottom: 1px solid hsl(36 26% 84%); }
+.deck .ledger { background-image: repeating-linear-gradient(transparent 0, transparent 6.9vh, hsl(234 48% 26% / .12) 7vh, transparent 7.1vh); }

@@ -1,0 +1,12 @@
+[
+  {"id":"e34bf6e9-799a-44ec-af62-c2436d860c01","position":1,"filepath":"src/pages/slides/Munim.tsx","title":"Munim","description":"Your munim, on your phone. Investor & partner overview.","speakerNotes":""},
+  {"id":"e34bf6e9-799a-44ec-af62-c2436d860c02","position":2,"filepath":"src/pages/slides/CashGap.tsx","title":"The weekly cash gap","description":"Supplier deadlines, customer dues and the cost of awkward reminders.","speakerNotes":""},
+  {"id":"e34bf6e9-799a-44ec-af62-c2436d860c03","position":3,"filepath":"src/pages/slides/Merchants.tsx","title":"The merchant at the counter","description":"Small Indian businesses and their everyday phone context.","speakerNotes":""},
+  {"id":"e34bf6e9-799a-44ec-af62-c2436d860c04","position":4,"filepath":"src/pages/slides/DailyLoop.tsx","title":"The daily Munim loop","description":"Tell, forecast, draft, approve and collect.","speakerNotes":""},
+  {"id":"e34bf6e9-799a-44ec-af62-c2436d860c05","position":5,"filepath":"src/pages/slides/Briefing.tsx","title":"Demo: the Friday briefing","description":"Illustrative sample briefing with a ₹2,500 likely cash gap.","speakerNotes":""},
+  {"id":"e34bf6e9-799a-44ec-af62-c2436d860c06","position":6,"filepath":"src/pages/slides/Approval.tsx","title":"Demo: the approval moment","description":"Recreated app screen illustrating merchant review and approval.","speakerNotes":""},
+  {"id":"e34bf6e9-799a-44ec-af62-c2436d860c07","position":7,"filepath":"src/pages/slides/Payments.tsx","title":"The payment and ledger flow","description":"Payment links, provider confirmation, manual recording and stub-mode boundaries.","speakerNotes":""},
+  {"id":"e34bf6e9-799a-44ec-af62-c2436d860c08","position":8,"filepath":"src/pages/slides/Distinction.tsx","title":"The product distinction","description":"Actionable forecasts and human-approved reminders.","speakerNotes":""},
+  {"id":"e34bf6e9-799a-44ec-af62-c2436d860c09","position":9,"filepath":"src/pages/slides/BusinessModel.tsx","title":"The business model hypothesis","description":"Proposed monetization and distribution, explicitly unvalidated.","speakerNotes":""},
+  {"id":"e34bf6e9-799a-44ec-af62-c2436d860c10","position":10,"filepath":"src/pages/slides/Pilot.tsx","title":"The pilot opportunity","description":"Merchant-pilot and distribution conversations with evidence-led expansion.","speakerNotes":""}
+]
