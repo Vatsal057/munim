@@ -31,6 +31,25 @@ type Entry = {
 
 type ParseResult = { entries: Entry[]; readback: string };
 
+/**
+ * Phone camera photos are often 5-12 MB (over the upload limit) and slow to send on shop data.
+ * 1600px JPEG keeps handwriting readable at ~200-400 KB. Falls back to the original file.
+ */
+async function shrinkPhoto(file: File): Promise<Blob> {
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/jpeg", 0.85));
+    return blob ?? file;
+  } catch {
+    return file;
+  }
+}
+
 // tone: owed = money coming to me (green), owe = I owe (red), neutral otherwise
 const TYPE_LABELS: Record<(typeof ENTRY_TYPES)[number], { label: string; tone: "owed" | "owe" | "neutral" | "haldi" }> = {
   credit_given: { label: "Credit given (udhaar)", tone: "owed" },
@@ -118,7 +137,7 @@ export default function Tell() {
     e.target.value = "";
     if (!file) return;
     const form = new FormData();
-    form.set("image", file);
+    form.set("image", await shrinkPhoto(file), "photo.jpg");
     form.set("kind", kind);
     await runParse(form, kind === "khata" ? "khata_photo" : "bill_photo");
   }

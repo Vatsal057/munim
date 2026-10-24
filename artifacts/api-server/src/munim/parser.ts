@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod/v4";
 import fs from "node:fs";
+import { logger } from "../lib/logger";
 import path from "node:path";
 import { agenticorgConfigured, aiStubbed, runAgenticorgTask } from "./agenticorgLLM.ts";
 
@@ -117,27 +118,48 @@ function buildTask(input: ParseInput, ctx: ParseContext): string {
     .join("\n\n");
 }
 
-/** Gemini reads the photo (khata page, bill, UPI slip). REST, no SDK: one call, JSON out. */
+/**
+ * Gemini reads the photo (khata page, bill, UPI slip). REST, no SDK. A model alias can stall
+ * for minutes, so each model gets 20 s and we fall through to the next; every attempt is logged.
+ */
 async function runGemini(task: string, imageBase64: string, mime: string): Promise<string> {
-  const model = process.env.GEMINI_MODEL || "gemini-flash-latest";
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-    method: "POST",
-    headers: { "content-type": "application/json", "x-goog-api-key": process.env.GEMINI_API_KEY! },
-    body: JSON.stringify({
-      contents: [{ role: "user", parts: [{ inline_data: { mime_type: mime, data: imageBase64 } }, { text: task }] }],
-      // Thinking off: a ledger page is a read-and-copy job, and thinking made calls take minutes.
-      generationConfig: { responseMimeType: "application/json", temperature: 0, thinkingConfig: { thinkingBudget: 0 } },
-    }),
-    signal: AbortSignal.timeout(45_000),
-  });
-  const body = (await res.json().catch(() => ({}))) as {
-    candidates?: { content?: { parts?: { text?: string }[] } }[];
-    error?: { message?: string };
-  };
-  if (!res.ok) throw new Error(`Gemini ${res.status}: ${body.error?.message ?? "request failed"}`);
-  const text = body.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
-  if (!text) throw new Error("Gemini returned no text");
-  return text;
+  const models = [
+    ...new Set([process.env.GEMINI_MODEL, "gemini-2.5-flash", "gemini-flash-latest", "gemini-flash-lite-latest"].filter(Boolean)),
+  ] as string[];
+  const attempts: string[] = [];
+  for (const model of models) {
+    const started = Date.now();
+    try {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-goog-api-key": process.env.GEMINI_API_KEY! },
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ inline_data: { mime_type: mime, data: imageBase64 } }, { text: task }] }],
+          generationConfig: {
+            responseMimeType: "application/json",
+            temperature: 0,
+            // Reading a page needs no reasoning; 2.5 models accept 0 to switch thinking off.
+            ...(model.includes("2.5") ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
+          },
+        }),
+        signal: AbortSignal.timeout(20_000),
+      });
+      const body = (await res.json().catch(() => ({}))) as {
+        candidates?: { content?: { parts?: { text?: string }[] } }[];
+        error?: { message?: string };
+      };
+      const text = body.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
+      if (res.ok && text) {
+        logger.info({ model, ms: Date.now() - started }, "gemini ok");
+        return text;
+      }
+      attempts.push(`${model}: ${res.status} ${(body.error?.message ?? "empty response").slice(0, 120)}`);
+    } catch (err) {
+      attempts.push(`${model}: ${err instanceof Error ? err.name : "error"} after ${Date.now() - started}ms`);
+    }
+  }
+  logger.error({ attempts }, "gemini failed");
+  throw new Error(`Gemini failed: ${attempts.join(" | ")}`);
 }
 
 export class VisionUnavailableError extends Error {
