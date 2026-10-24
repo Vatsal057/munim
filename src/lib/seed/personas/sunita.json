@@ -1,0 +1,49 @@
+{
+  "slug": "sunita",
+  "name": "Sunita Devi",
+  "phone": "9000000002",
+  "business_name": "Sunita's Tiffin Service",
+  "business_type": "tiffin",
+  "language": "hi",
+  "customers": [
+    { "name": "Rohit", "kind": "customer" },
+    { "name": "Priya", "kind": "customer" },
+    { "name": "Arjun", "kind": "customer" },
+    { "name": "Kavita", "kind": "customer" },
+    { "name": "Deepak", "kind": "customer" },
+    { "name": "Meenakshi", "kind": "customer" },
+    { "name": "Sandeep", "kind": "customer" },
+    { "name": "Pooja", "kind": "customer" },
+    { "name": "Rahul", "kind": "customer" },
+    { "name": "Neha", "kind": "customer" },
+    { "name": "Fresh Veggie Mart", "kind": "supplier" }
+  ],
+  "entries": [
+    { "customer": "Fresh Veggie Mart", "type": "supplier_due", "amount_rupees": 3200, "created_offset_days": -1, "due_next_weekday": 1 },
+
+    { "customer": "Rohit", "type": "credit_given", "amount_rupees": 2400, "created_offset_days": -30, "due_offset_days": -23, "paid_offset_days": -22 },
+    { "customer": "Rohit", "type": "credit_given", "amount_rupees": 2400, "created_offset_days": -1, "due_offset_days": 6 },
+
+    { "customer": "Priya", "type": "credit_given", "amount_rupees": 2000, "created_offset_days": -29, "due_offset_days": -22, "paid_offset_days": -21 },
+    { "customer": "Priya", "type": "credit_given", "amount_rupees": 2000, "created_offset_days": -1, "due_offset_days": 6 },
+
+    { "customer": "Arjun", "type": "credit_given", "amount_rupees": 2200, "created_offset_days": -40, "due_offset_days": -33, "paid_offset_days": -15 },
+    { "customer": "Arjun", "type": "credit_given", "amount_rupees": 2200, "created_offset_days": -2, "due_offset_days": 5 },
+
+    { "customer": "Kavita", "type": "credit_given", "amount_rupees": 1800, "created_offset_days": -2, "due_offset_days": 5 },
+
+    { "customer": "Deepak", "type": "credit_given", "amount_rupees": 2600, "created_offset_days": -35, "due_offset_days": -28, "paid_offset_days": -27 },
+    { "customer": "Deepak", "type": "credit_given", "amount_rupees": 2600, "created_offset_days": -2, "due_offset_days": 5 },
+
+    { "customer": "Meenakshi", "type": "credit_given", "amount_rupees": 1500, "created_offset_days": -3, "due_offset_days": 4 },
+
+    { "customer": "Sandeep", "type": "credit_given", "amount_rupees": 2400, "created_offset_days": -45, "due_offset_days": -38, "paid_offset_days": -20 },
+
+    { "customer": "Pooja", "type": "credit_given", "amount_rupees": 2000, "created_offset_days": -3, "due_offset_days": 4 },
+
+    { "customer": "Rahul", "type": "credit_given", "amount_rupees": 2800, "created_offset_days": -50, "due_offset_days": -43, "paid_offset_days": -42 },
+    { "customer": "Rahul", "type": "credit_given", "amount_rupees": 2800, "created_offset_days": -1, "due_offset_days": 6 },
+
+    { "customer": "Neha", "type": "credit_given", "amount_rupees": 1900, "created_offset_days": -4, "due_offset_days": 3 }
+  ]
+}

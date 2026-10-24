@@ -1,0 +1,19 @@
+{
+  "slug": "anwar",
+  "name": "Anwar Sheikh",
+  "phone": "9000000004",
+  "business_name": "Anwar Tailors",
+  "business_type": "tailor",
+  "language": "hi",
+  "customers": [
+    { "name": "Salim", "kind": "customer" },
+    { "name": "Farida", "kind": "customer" },
+    { "name": "Cloth House", "kind": "supplier" }
+  ],
+  "entries": [
+    { "customer": "Cloth House", "type": "supplier_due", "amount_rupees": 2500, "created_offset_days": -2, "due_offset_days": 4 },
+    { "customer": "Salim", "type": "credit_given", "amount_rupees": 800, "created_offset_days": -20, "due_offset_days": -13, "paid_offset_days": -12 },
+    { "customer": "Salim", "type": "credit_given", "amount_rupees": 650, "created_offset_days": -3, "due_offset_days": 4 },
+    { "customer": "Farida", "type": "credit_given", "amount_rupees": 450, "created_offset_days": -2, "due_offset_days": 5 }
+  ]
+}

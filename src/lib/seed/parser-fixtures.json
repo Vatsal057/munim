@@ -1,0 +1,81 @@
+{
+  "auto": {
+    "entries": [
+      {
+        "type": "credit_given",
+        "party_name": "Suresh",
+        "party_kind": "customer",
+        "amount_rupees": 500,
+        "due_date": null,
+        "items": null,
+        "confidence": "high"
+      }
+    ],
+    "readback": "Suresh owes you ₹500."
+  },
+  "chat": {
+    "entries": [
+      {
+        "type": "payment_received",
+        "party_name": "Suresh",
+        "party_kind": "customer",
+        "amount_rupees": 500,
+        "due_date": null,
+        "items": null,
+        "confidence": "high"
+      }
+    ],
+    "readback": "Suresh paid you ₹500."
+  },
+  "khata": {
+    "entries": [
+      {
+        "type": "credit_given",
+        "party_name": "Ramesh",
+        "party_kind": "customer",
+        "amount_rupees": 340,
+        "due_date": null,
+        "items": "rice, dal",
+        "confidence": "high"
+      },
+      {
+        "type": "credit_given",
+        "party_name": "Anwar",
+        "party_kind": "customer",
+        "amount_rupees": 120,
+        "due_date": null,
+        "items": null,
+        "confidence": "medium"
+      }
+    ],
+    "readback": "Ramesh owes ₹340 and Anwar owes ₹120."
+  },
+  "bill": {
+    "entries": [
+      {
+        "type": "supplier_due",
+        "party_name": "Shree Wholesale",
+        "party_kind": "supplier",
+        "amount_rupees": 8000,
+        "due_date": null,
+        "items": "groceries",
+        "confidence": "high"
+      }
+    ],
+    "readback": "You owe Shree Wholesale ₹8,000."
+  },
+  "upi": {
+    "entries": [
+      {
+        "type": "payment_received",
+        "party_name": "Meena",
+        "party_kind": "customer",
+        "amount_rupees": 250,
+        "due_date": null,
+        "items": null,
+        "confidence": "medium"
+      }
+    ],
+    "readback": "Meena paid you ₹250."
+  }
+}
