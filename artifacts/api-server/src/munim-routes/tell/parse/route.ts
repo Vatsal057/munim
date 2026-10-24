@@ -51,6 +51,10 @@ export async function POST(req: Request) {
   } catch (err) {
     if (err instanceof VisionUnavailableError) return Response.json({ error: err.message }, { status: 422 });
     logger.error({ err }, "request failed");
+    const msg = err instanceof Error ? err.message : "";
+    if (msg.startsWith("Gemini")) {
+      return Response.json({ error: `Couldn't read the photo (${msg.slice(0, 160)}). Type or speak it instead.` }, { status: 502 });
+    }
     return Response.json({ error: "Couldn't read that. Try again or type it." }, { status: 502 });
   }
 }
