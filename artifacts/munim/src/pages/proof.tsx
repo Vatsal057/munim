@@ -60,7 +60,7 @@ function ProofBody({ d }: { d: ProofView }) {
 
       <p className="flex items-start gap-2 rounded-2xl border border-owed/30 bg-owed-soft px-4 py-3 text-sm text-ink">
         <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-owed" />
-        Real accounts only. Sample shops used for demos are excluded. Names and phone numbers are masked for privacy.
+        Names and phone numbers are masked for privacy.
       </p>
 
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-4" data-testid="proof-stats">
