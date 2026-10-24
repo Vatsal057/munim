@@ -3,6 +3,7 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 import fs from "node:fs";
 import path from "node:path";
+import { agenticorgConfigured, runAgenticorgTask } from "./agenticorgLLM.ts";
 
 const ENTRY_TYPES = [
   "credit_given",
@@ -75,6 +76,17 @@ Rules:
 - readback is one short plain sentence summarizing what you understood, in the shopkeeper's language, suitable for reading aloud.
 - Output nothing except the structured result.`;
 
+const JSON_SHAPE_INSTRUCTIONS = `Output ONLY valid JSON (no markdown fences, no preamble, no explanation) matching exactly this shape:
+{"entries":[{"type":"credit_given"|"payment_received"|"purchase"|"supplier_due"|"supplier_paid"|"order"|"skip"|"sale"|"wastage","party_name":string,"party_kind":"customer"|"supplier","amount_rupees":number,"due_date":string|null,"items":string|null,"confidence":"high"|"medium"|"low"}],"readback":string}
+due_date, if present, must be an ISO date YYYY-MM-DD, resolved against today's date: ${new Date().toISOString().slice(0, 10)} (Asia/Kolkata). Never a weekday name or relative phrase.`;
+
+function extractJson(raw: Record<string, unknown> | string): unknown {
+  if (typeof raw !== "string") return raw;
+  const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const text = fenced ? fenced[1] : raw;
+  return JSON.parse(text.trim());
+}
+
 function loadFixture(kind: ParseKind): ParseResultT {
   const fixturePath = path.join(process.cwd(), "src/lib/seed/parser-fixtures.json");
   const fixtures = JSON.parse(fs.readFileSync(fixturePath, "utf8"));
@@ -98,6 +110,29 @@ export async function parse(input: ParseInput, ctx: ParseContext): Promise<Parse
         ...e,
         party_name: matchKnownName(e.party_name, ctx.knownNames),
       })),
+    };
+  }
+
+  if (!process.env.ANTHROPIC_API_KEY && agenticorgConfigured()) {
+    const task = [
+      SYSTEM_PROMPT,
+      JSON_SHAPE_INSTRUCTIONS,
+      `Shop business type: ${ctx.businessType}. Preferred language: ${ctx.language}.`,
+      ctx.knownNames.length ? `Known names: ${ctx.knownNames.join(", ")}.` : "",
+      `Input kind: ${input.kind}.`,
+      input.text ? `Shopkeeper said: "${input.text}"` : "Read the attached image.",
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+
+    const image =
+      input.imageBase64 && input.imageMime ? { base64: input.imageBase64, mime: input.imageMime } : undefined;
+
+    const raw = await runAgenticorgTask(task, image);
+    const parsed = ParseResult.parse(extractJson(raw));
+    return {
+      ...parsed,
+      entries: parsed.entries.map((e) => ({ ...e, party_name: matchKnownName(e.party_name, ctx.knownNames) })),
     };
   }
 

@@ -4,6 +4,7 @@ import { getCustomerBalances, getSupplierDues } from "./ledger";
 import { buildHistories, likelihoodToPayBy, forecastHorizon, type RawEntry } from "./forecast";
 import { formatINR } from "./money";
 import { logEvent } from "./events";
+import { agenticorgConfigured, runAgenticorgTask } from "./agenticorgLLM";
 
 export type Pick = {
   customerId: number;
@@ -89,6 +90,19 @@ export async function draftMessage(
   const fallback = `Hi ${customer.name}, this is ${merchant.business_name}. A gentle reminder that ${amount} is due. Pay here: {PAY_LINK}. Thank you!`;
 
   if (process.env.AI_STUB === "1") return fallback;
+
+  if (!process.env.ANTHROPIC_API_KEY && agenticorgConfigured()) {
+    try {
+      const task = `You write short, polite, warm payment reminder texts for small Indian shopkeepers to send their customers over WhatsApp. Never shame or threaten. Include the shop name and the amount. Always include the literal placeholder {PAY_LINK} exactly once, where the payment link should go. Keep it under 300 characters. Output only the message text, in the requested language, no quotes or preamble.
+
+Shop: ${merchant.business_name}. Customer: ${customer.name}. Amount due: ${amount}. Why: ${reason}. Language: ${merchant.language}.`;
+      const raw = await runAgenticorgTask(task);
+      const text = typeof raw === "string" ? raw.trim() : JSON.stringify(raw);
+      return text.includes("{PAY_LINK}") ? text : fallback;
+    } catch {
+      return fallback;
+    }
+  }
 
   try {
     const response = await client.messages.create({
