@@ -61,3 +61,6 @@ create table if not exists events (       -- proof log: never delete rows
 
 create index if not exists entries_merchant_idx on entries(merchant_id, created_at);
 create index if not exists events_merchant_idx on events(merchant_id, created_at);
+
+-- Returning users log in with phone + 4-digit PIN (scrypt hash, never the PIN itself).
+alter table merchants add column if not exists pin_hash text;

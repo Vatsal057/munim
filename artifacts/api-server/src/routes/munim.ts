@@ -24,6 +24,8 @@ import * as reminderQr from "../munim-routes/reminders/[id]/qr/route";
 import * as reminderReject from "../munim-routes/reminders/[id]/reject/route";
 import * as reminderShare from "../munim-routes/reminders/[id]/share/route";
 import * as signup from "../munim-routes/signup/route";
+import * as login from "../munim-routes/login/route";
+import * as logout from "../munim-routes/logout/route";
 import * as tellParse from "../munim-routes/tell/parse/route";
 import * as tellTranscribe from "../munim-routes/tell/transcribe/route";
 import * as views from "../munim-routes/views";
@@ -86,6 +88,8 @@ const rawBody = express.raw({ type: () => true, limit: "12mb" });
 router.get("/health", rawBody, adapt(health.GET as WebHandler));
 
 router.post("/signup", rawBody, adapt(signup.POST as WebHandler));
+router.post("/login", rawBody, adapt(login.POST as WebHandler));
+router.post("/logout", rawBody, adapt(logout.POST as WebHandler));
 router.post("/demo/:slug", rawBody, adapt(demoSlug.POST as WebHandler));
 router.post("/entries", rawBody, adapt(entries.POST as WebHandler));
 router.post("/tell/parse", rawBody, adapt(tellParse.POST as WebHandler));
@@ -117,5 +121,6 @@ router.get("/views/activity", rawBody, adapt(views.activity as WebHandler));
 router.get("/views/reminders", rawBody, adapt(views.reminders as WebHandler));
 router.get("/views/pay/:token", rawBody, adapt(views.pay as WebHandler));
 router.get("/views/admin", rawBody, adapt(views.admin as WebHandler));
+router.get("/views/proof", rawBody, adapt(views.proof as WebHandler));
 
 export default router;

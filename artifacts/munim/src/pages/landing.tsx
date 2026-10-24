@@ -67,6 +67,12 @@ export default function Landing() {
           <p className="flex items-center gap-2 text-sm text-muted-foreground">
             <Check className="h-4 w-4 text-owed" /> No credit card required · Works on any phone
           </p>
+          <p className="text-sm text-muted-foreground">
+            Already using Munim?{" "}
+            <Link href="/login" data-testid="link-login-landing" className="font-semibold text-ink underline underline-offset-4">
+              Log in
+            </Link>
+          </p>
         </section>
 
         {/* Briefing preview: a page from the bahi */}

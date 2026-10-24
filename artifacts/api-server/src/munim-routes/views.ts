@@ -304,3 +304,61 @@ export async function admin(req: Request) {
     agentEventsCount: Number(agentEvents[0]?.count ?? 0),
   });
 }
+
+/** "Ramesh Kumar" -> "Ramesh K." : enough for judges to see real people, not enough to dox them. */
+function maskName(name: string): string {
+  const [first, ...rest] = name.trim().split(/\s+/);
+  return rest.length ? `${first} ${rest[rest.length - 1][0].toUpperCase()}.` : first;
+}
+
+const maskPhone = (p: string) => (p.length === 10 ? `${p.slice(0, 2)}xxxxxx${p.slice(8)}` : "xxxxxxxxxx");
+
+/**
+ * Public proof-of-life for judges: real (non-demo) merchants only, straight from the database.
+ * Every count is a live query; nothing here can be edited from the page.
+ */
+export async function proof() {
+  await ensureSchema();
+  const real = `join merchants m on m.id = e.merchant_id and m.is_demo = false`;
+  const [users, counts, logins] = await Promise.all([
+    query<{ name: string; phone: string; business_type: string; created_at: string; last_seen: string | null; entries: string; logins: string }>(
+      `select m.name, m.phone, m.business_type, m.created_at,
+              (select max(created_at) from events where merchant_id = m.id) as last_seen,
+              (select count(*) from entries where merchant_id = m.id) as entries,
+              (select count(*) from events where merchant_id = m.id and action = 'login') as logins
+       from merchants m where m.is_demo = false order by m.created_at desc`
+    ),
+    query<{ entries: string; approved: string; paid: string; agent: string; active_today: string }>(
+      `select
+         (select count(*) from entries e ${real}) as entries,
+         (select count(*) from events e ${real} where e.action = 'reminder_approved') as approved,
+         (select count(*) from events e ${real} where e.action = 'payment_received') as paid,
+         (select count(*) from events e ${real} where e.actor = 'agent') as agent,
+         (select count(distinct e.merchant_id) from events e ${real}
+            where e.created_at >= date_trunc('day', now() at time zone 'Asia/Kolkata') at time zone 'Asia/Kolkata') as active_today`
+    ),
+    query<{ count: string }>(`select count(*) from events e ${real} where e.action = 'login'`),
+  ]);
+  const c = counts[0];
+  return Response.json({
+    generatedAt: new Date().toISOString(),
+    totals: {
+      users: users.length,
+      logins: Number(logins[0]?.count ?? 0),
+      activeToday: Number(c.active_today),
+      entries: Number(c.entries),
+      remindersApproved: Number(c.approved),
+      payments: Number(c.paid),
+      agentActions: Number(c.agent),
+    },
+    users: users.map((u) => ({
+      name: maskName(u.name),
+      phone: maskPhone(u.phone),
+      business_type: u.business_type,
+      signed_up_at: u.created_at,
+      last_seen: u.last_seen,
+      entries: Number(u.entries),
+      logins: Number(u.logins),
+    })),
+  });
+}

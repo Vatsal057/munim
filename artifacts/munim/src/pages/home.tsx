@@ -1,7 +1,8 @@
-import { Link, useSearch } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
+import { useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, ArrowLeftRight, BellRing, Camera, CheckCircle2, ChevronRight, History, Mic, ShieldCheck, Sun } from "lucide-react";
 import { formatINR } from "@/lib/money";
-import { useView, type HomeView, type RecentEntry } from "@/lib/api";
+import { postJSON, useView, type HomeView, type RecentEntry } from "@/lib/api";
 import { Logo, Page } from "@/components/munim/ui";
 import { ViewGate } from "@/components/munim/view-gate";
 import { cn } from "@/lib/utils";
@@ -77,6 +78,24 @@ function RecentList({ recent, highlight }: { recent: RecentEntry[]; highlight: n
         })}
       </ul>
     </section>
+  );
+}
+
+function LogoutButton() {
+  const [, navigate] = useLocation();
+  const qc = useQueryClient();
+  return (
+    <button
+      onClick={async () => {
+        await postJSON("logout").catch(() => undefined);
+        qc.removeQueries({ queryKey: ["view"] });
+        navigate("/login");
+      }}
+      data-testid="button-logout"
+      className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-input bg-card px-3.5 font-semibold text-ink"
+    >
+      Log out
+    </button>
   );
 }
 
@@ -254,9 +273,13 @@ function HomeBody({ d }: { d: HomeView }) {
         <Link href="/app/activity" data-testid="link-activity" className="inline-flex min-h-11 items-center gap-2 rounded-xl px-2 font-semibold text-muted-foreground hover:text-ink">
           <History className="h-4 w-4" /> Activity log
         </Link>
-        <Link href="/demo" data-testid="link-switch-persona" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-input bg-card px-3.5 font-semibold text-ink">
-          <ArrowLeftRight className="h-4 w-4" /> Switch persona
-        </Link>
+        {merchant.is_demo ? (
+          <Link href="/demo" data-testid="link-switch-persona" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-input bg-card px-3.5 font-semibold text-ink">
+            <ArrowLeftRight className="h-4 w-4" /> Switch persona
+          </Link>
+        ) : (
+          <LogoutButton />
+        )}
       </nav>
     </Page>
   );

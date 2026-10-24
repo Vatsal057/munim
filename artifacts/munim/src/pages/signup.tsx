@@ -48,6 +48,7 @@ export default function Signup() {
   const [businessName, setBusinessName] = useState("");
   const [businessType, setBusinessType] = useState("kirana");
   const [language, setLanguage] = useState("en");
+  const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -62,11 +63,13 @@ export default function Signup() {
         business_name: businessName,
         business_type: businessType,
         language,
+        pin,
       });
       setLoading(false);
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(data?.error?.fieldErrors?.phone?.[0] ?? "Something went wrong. Try again.");
+        const fe = data?.error?.fieldErrors;
+        setError(fe?.phone?.[0] ?? fe?.pin?.[0] ?? "Something went wrong. Try again.");
         return;
       }
       qc.removeQueries({ queryKey: ["view"] });
@@ -113,6 +116,24 @@ export default function Signup() {
         </label>
 
         <label className="flex flex-col gap-1.5">
+          <span className="text-sm font-semibold text-ink">Choose a 4-digit PIN</span>
+          <input
+            required
+            type="password"
+            inputMode="numeric"
+            pattern="\d{4}"
+            maxLength={4}
+            value={pin}
+            onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
+            className={cn(inputCls, "font-num tracking-[0.5em]")}
+            placeholder="••••"
+            data-testid="input-pin"
+            autoComplete="new-password"
+          />
+          <span className="text-xs text-muted-foreground">You'll use your phone number and this PIN to log in.</span>
+        </label>
+
+        <label className="flex flex-col gap-1.5">
           <span className="text-sm font-semibold text-ink">Shop / business name</span>
           <input required value={businessName} onChange={(e) => setBusinessName(e.target.value)} className={inputCls} placeholder="Ramesh Kirana Store" data-testid="input-business-name" />
         </label>
@@ -153,7 +174,11 @@ export default function Signup() {
           )}
         </Button>
         <p className="text-center text-sm text-muted-foreground">
-          Just looking?{" "}
+          Already signed up?{" "}
+          <Link href="/login" className="font-semibold text-ink underline underline-offset-4" data-testid="link-login">
+            Log in
+          </Link>
+          {" · "}Just looking?{" "}
           <Link href="/demo" className="font-semibold text-ink underline underline-offset-4">
             Try a demo shop
           </Link>

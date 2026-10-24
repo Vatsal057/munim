@@ -17,6 +17,8 @@ import Activity from '@/pages/activity';
 import Reminders from '@/pages/reminders';
 import Pay from '@/pages/pay';
 import Admin from '@/pages/admin';
+import Login from '@/pages/login';
+import Proof from '@/pages/proof';
 import {
   Route,
   Switch,
@@ -34,6 +36,8 @@ function Router() {
       <Switch>
         <Route path="/" component={Landing} />
         <Route path="/signup" component={Signup} />
+        <Route path="/login" component={Login} />
+        <Route path="/proof" component={Proof} />
         <Route path="/demo" component={Demo} />
         <Route path="/app" component={Home} />
         <Route path="/app/tell" component={Tell} />
