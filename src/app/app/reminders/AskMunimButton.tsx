@@ -9,18 +9,23 @@ export default function AskMunimButton() {
 
   async function run() {
     setBusy(true);
-    await fetch("/api/agent/run", { method: "POST" });
-    setBusy(false);
-    router.refresh();
+    try {
+      await fetch("/api/agent/run", { method: "POST" });
+    } finally {
+      setBusy(false);
+      router.refresh();
+    }
   }
 
   return (
     <button
       onClick={run}
       disabled={busy}
-      className="bg-gray-200 rounded-lg py-3 text-sm font-semibold disabled:opacity-50"
+      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900 text-white text-xs font-semibold shadow-xs hover:bg-slate-800 active:scale-95 transition-all disabled:opacity-50"
     >
-      {busy ? "Thinking…" : "Ask munim"}
+      <span className="text-amber-400">{busy ? "⚡" : "✨"}</span>
+      <span>{busy ? "Munim Drafting…" : "Run Agent"}</span>
     </button>
   );
 }
+
