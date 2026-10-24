@@ -3,6 +3,7 @@ import { ensureSchema, query } from "@/lib/db";
 import { generateSessionToken, sessionCookie, verifyPin } from "@/lib/session";
 import { logEvent } from "@/lib/events";
 import { rateLimited } from "@/lib/rateLimit";
+import { demoSessionToken, PERSONA_PHONES } from "@/lib/seed/demoToken";
 
 const Body = z.object({
   phone: z.string().regex(/^\d{10}$/),
@@ -30,7 +31,9 @@ export async function POST(req: Request) {
   const ok = m && (m.is_demo ? pin === DEMO_PIN : m.pin_hash !== null && verifyPin(pin, m.pin_hash));
   if (!m || !ok) return Response.json({ error: "Phone number or PIN doesn't match." }, { status: 401 });
 
-  const token = generateSessionToken();
+  // Demo shops share one fixed token with the "Try a demo shop" button; never rotate it.
+  const slug = m.is_demo ? Object.entries(PERSONA_PHONES).find(([, p]) => p === phone)?.[0] : undefined;
+  const token = slug ? demoSessionToken(slug) : generateSessionToken();
   await query(`update merchants set session_token = $2 where id = $1`, [m.id, token]);
   await logEvent(m.id, "merchant", "login", {});
 

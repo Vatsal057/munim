@@ -1,8 +1,11 @@
+import { useState } from "react";
 import { useParams } from "wouter";
-import { CalendarClock, FileText } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { CalendarClock, CheckCheck, FileText, Smartphone } from "lucide-react";
 import { formatINR } from "@/lib/money";
-import { useView, type CustomerView } from "@/lib/api";
-import { Initials, Page, StateCard, TopBar, fmtDate } from "@/components/munim/ui";
+import { postJSON, useView, type CustomerView } from "@/lib/api";
+import { Button, Initials, Notice, Page, Spinner, StateCard, TopBar, fmtDate } from "@/components/munim/ui";
+import { useToast } from "@/hooks/use-toast";
 import { ViewGate } from "@/components/munim/view-gate";
 import { cn } from "@/lib/utils";
 
@@ -38,6 +41,8 @@ function CustomerBody({ d }: { d: CustomerView }) {
         </span>
       </section>
 
+      {!settled && <SettlePanel d={d} youOwe={!owedToMe} amountPaise={Math.abs(bal)} />}
+
       <h2 className="px-1 text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">History</h2>
       {d.entries.length === 0 ? (
         <StateCard icon={<FileText className="h-6 w-6" />} title="No entries yet." />
@@ -67,5 +72,128 @@ function CustomerBody({ d }: { d: CustomerView }) {
         </ol>
       )}
     </Page>
+  );
+}
+
+/**
+ * Settle a balance by hand. Suppliers: open a UPI app (phones) and/or record the payment.
+ * Customers: record cash collected at the counter. Always an explicit tap; nothing pays itself.
+ */
+function SettlePanel({ d, youOwe, amountPaise }: { d: CustomerView; youOwe: boolean; amountPaise: number }) {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const [rupees, setRupees] = useState(String(amountPaise / 100));
+  const [upiId, setUpiId] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const amount = Number(rupees);
+  const valid = Number.isFinite(amount) && amount > 0;
+  const upiValid = /^[\w.-]+@[\w.-]+$/.test(upiId.trim());
+
+  const upiHref = `upi://pay?${new URLSearchParams({
+    pa: upiId.trim(),
+    pn: d.customer.name,
+    am: valid ? amount.toFixed(2) : "",
+    cu: "INR",
+    tn: "Payment via Munim",
+  }).toString()}`;
+
+  async function record() {
+    if (!valid) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await postJSON("entries", {
+        entries: [
+          {
+            type: youOwe ? "supplier_paid" : "payment_received",
+            party_name: d.customer.name,
+            party_kind: d.customer.kind,
+            amount_rupees: amount,
+            due_date: null,
+            items: null,
+            note: youOwe && upiValid ? `Paid by UPI to ${upiId.trim()}` : youOwe ? "Paid (recorded by you)" : "Collected (recorded by you)",
+            source: "manual",
+          },
+        ],
+      });
+      setBusy(false);
+      if (!res.ok) return setError("Couldn't save that. Try again.");
+      toast({
+        title: youOwe ? "Payment recorded" : "Collection recorded",
+        description: `${formatINR(Math.round(amount * 100))} ${youOwe ? "to" : "from"} ${d.customer.name}. Balances updated.`,
+      });
+      await qc.invalidateQueries({ queryKey: ["view"] });
+    } catch {
+      setBusy(false);
+      setError("Couldn't save that. Try again.");
+    }
+  }
+
+  const inputCls =
+    "min-h-12 w-full rounded-2xl border border-input bg-background/60 px-4 text-[17px] text-ink focus:border-ink focus:outline-none focus:ring-2 focus:ring-ink/15";
+
+  return (
+    <section className="rise flex flex-col gap-3 rounded-[1.5rem] border border-card-border bg-card p-4 shadow-xs" data-testid="panel-settle">
+      <h2 className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">
+        {youOwe ? `Pay ${d.customer.name}` : `Collected from ${d.customer.name}?`}
+      </h2>
+      <label className="flex flex-col gap-1.5">
+        <span className="text-sm font-semibold text-ink">Amount</span>
+        <div className="relative">
+          <span className="font-num pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">₹</span>
+          <input
+            inputMode="decimal"
+            value={rupees}
+            onChange={(e) => setRupees(e.target.value.replace(/[^\d.]/g, ""))}
+            className={cn(inputCls, "font-num pl-9")}
+            data-testid="input-settle-amount"
+          />
+        </div>
+      </label>
+
+      {youOwe && (
+        <label className="flex flex-col gap-1.5">
+          <span className="text-sm font-semibold text-ink">
+            Supplier's UPI ID <span className="font-normal text-muted-foreground">(optional)</span>
+          </span>
+          <input
+            value={upiId}
+            onChange={(e) => setUpiId(e.target.value)}
+            className={inputCls}
+            placeholder="shreewholesale@okaxis"
+            autoCapitalize="none"
+            autoCorrect="off"
+            data-testid="input-upi-id"
+          />
+        </label>
+      )}
+
+      {error && <Notice>{error}</Notice>}
+
+      <div className={cn("grid gap-2", youOwe && "sm:grid-cols-2")}>
+        {youOwe && (
+          <a
+            href={upiValid && valid ? upiHref : undefined}
+            aria-disabled={!upiValid || !valid}
+            className={cn(
+              "inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-ink px-4 text-[15px] font-semibold text-background",
+              (!upiValid || !valid) && "pointer-events-none opacity-50",
+            )}
+            data-testid="link-pay-upi"
+          >
+            <Smartphone className="h-4 w-4 text-haldi" /> Pay in UPI app
+          </a>
+        )}
+        <Button variant="owed" onClick={record} disabled={busy || !valid} data-testid="button-record-settle">
+          {busy ? <Spinner /> : <CheckCheck className="h-4 w-4" />} {youOwe ? "Record as paid" : "Record payment received"}
+        </Button>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        {youOwe
+          ? "Pay in any UPI app (on your phone), or in cash or by bank, then tap Record as paid so Munim updates what you owe."
+          : "For cash or UPI paid straight to you. Pine Labs link payments are recorded automatically."}
+      </p>
+    </section>
   );
 }

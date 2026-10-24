@@ -1,6 +1,6 @@
 import { ensureSchema, query } from "@/lib/db";
 import { SESSION_COOKIE } from "@/lib/session";
-import { demoSessionToken, PERSONA_SLUGS } from "@/lib/seed/demoToken";
+import { demoSessionToken, PERSONA_PHONES, PERSONA_SLUGS } from "@/lib/seed/demoToken";
 
 export async function POST(_req: Request, { params }: { params: Promise<{ slug: string }> }) {
   await ensureSchema();
@@ -10,7 +10,16 @@ export async function POST(_req: Request, { params }: { params: Promise<{ slug: 
   }
 
   const token = demoSessionToken(slug);
-  const rows = await query<{ id: number }>(`select id from merchants where session_token = $1`, [token]);
+  let rows = await query<{ id: number }>(`select id from merchants where session_token = $1`, [token]);
+  if (!rows[0]) {
+    // Self-heal: an older login build overwrote demo tokens. Restore it on the seeded demo shop.
+    rows = await query<{ id: number }>(
+      `update merchants set session_token = $1
+       where id = (select id from merchants where is_demo and phone = $2 order by created_at desc limit 1)
+       returning id`,
+      [token, PERSONA_PHONES[slug as (typeof PERSONA_SLUGS)[number]]]
+    );
+  }
   if (!rows[0]) {
     return Response.json({ error: "Demo data not seeded yet. Run `npm run seed`." }, { status: 404 });
   }
