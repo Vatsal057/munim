@@ -1,0 +1,29 @@
+kind = "video"
+videoAspectRatio = "16:9"
+previewPath = "/munim-promo/"
+title = "Munim Promo Video"
+description = "Animated promo film about Munim, the AI munim for small Indian businesses."
+version = "1.0.0"
+id = "artifacts/munim-promo"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/munim-promo/" ]
+localPort = 20851
+
+[services.development]
+run = "pnpm --filter @workspace/munim-promo run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/munim-promo", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/munim-promo/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "20851"
+BASE_PATH = "/munim-promo/"

@@ -1,0 +1,37 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,700;1,9..144,500;1,9..144,700&family=Mukta:wght@400;600;700&family=Noto+Sans+Kannada:wght@500;700&family=Noto+Sans+Devanagari:wght@700&family=Caveat:wght@600&family=JetBrains+Mono:wght@500;700&display=swap');
+@import 'tailwindcss';
+
+:root {
+  --paper: #f7f1e6;
+  --paper-2: #efe5d2;
+  --ink: #22285f;
+  --ink-deep: #161a42;
+  --haldi: #f2a51a;
+  --haldi-soft: #fbe3b0;
+  --owed: #1c6e48;
+  --owed-soft: #dcefe3;
+  --owe: #a92530;
+  --owe-soft: #f9e4e5;
+  --muted: #5d6280;
+  --color-bg-light: var(--paper);
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-body: 'Mukta', 'Noto Sans Devanagari', 'Noto Sans Kannada', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+html, body, #root { margin: 0; height: 100%; background: var(--ink-deep); }
+body { font-family: var(--font-body); color: var(--ink); -webkit-font-smoothing: antialiased; }
+
+.f-display { font-family: var(--font-display); font-optical-sizing: auto; letter-spacing: -0.02em; }
+.f-mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.03em; }
+.f-kn { font-family: 'Noto Sans Kannada', var(--font-body); }
+.paper { background-color: var(--paper); }
+.ledger {
+  background-image:
+    linear-gradient(to right, transparent 9vmin, rgba(169,37,48,.35) 9vmin, rgba(169,37,48,.35) calc(9vmin + 2px), transparent calc(9vmin + 2px)),
+    repeating-linear-gradient(to bottom, transparent 0, transparent calc(6vmin - 1px), rgba(34,40,95,.10) calc(6vmin - 1px), rgba(34,40,95,.10) 6vmin);
+}
+.grain::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .07; mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
