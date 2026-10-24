@@ -5,6 +5,7 @@ import { buildHistories, likelihoodToPayBy, forecastHorizon, type RawEntry } fro
 import { formatINR } from "./money";
 import { logEvent } from "./events";
 import { agenticorgConfigured, runAgenticorgTask } from "./agenticorgLLM";
+import { applyAgentDecision, buildDecisionTask } from "./agentDecision";
 
 export type Pick = {
   customerId: number;
@@ -28,8 +29,8 @@ function buildReason(balancePaise: number, ageDays: number, likelihood: number):
   return `Owes ${amount} for ${age}; ${habit}.`;
 }
 
-/** Ranks open dues by amount × (1 - likelihood) × ageWeight; takes customers until expected recovery covers the gap, max 5. */
-export async function pickCustomers(merchantId: number): Promise<Pick[]> {
+/** All open dues, ranked by amount × (1 - likelihood) × ageWeight, plus what the merchant owes suppliers and by when. */
+async function rankCandidates(merchantId: number) {
   const [balances, supplierDues, rawEntries] = await Promise.all([
     getCustomerBalances(merchantId),
     getSupplierDues(merchantId),
@@ -60,12 +61,23 @@ export async function pickCustomers(merchantId: number): Promise<Pick[]> {
         name: b.name,
         amountPaise: Number(b.balance_paise),
         likelihood,
+        ageDays,
         score,
         reason: buildReason(Number(b.balance_paise), ageDays, likelihood),
       };
     })
     .sort((a, b) => b.score - a.score);
 
+  return { ranked, owedOutPaise, horizon };
+}
+
+/** Built-in heuristic: takes ranked customers until expected recovery covers the supplier gap, max 5. */
+export async function pickCustomers(merchantId: number): Promise<Pick[]> {
+  const { ranked, owedOutPaise } = await rankCandidates(merchantId);
+  return heuristicPicks(ranked, owedOutPaise);
+}
+
+function heuristicPicks(ranked: Pick[], owedOutPaise: number): Pick[] {
   const picks: Pick[] = [];
   let recoveredPaise = 0;
   for (const candidate of ranked) {
@@ -136,7 +148,7 @@ export async function createDrafts(
   const merchant = merchantRows[0];
   if (!merchant) return [];
 
-  const picks = await pickCustomers(merchantId);
+  const { picks, decidedBy } = await choosePicks(merchantId, merchant.business_name);
   const createdIds: number[] = [];
 
   for (const pick of picks) {
@@ -148,13 +160,63 @@ export async function createDrafts(
     );
     const reminderId = rows[0].id;
     createdIds.push(reminderId);
-    await logEvent(merchantId, createdBy === "agent" ? "agent" : "system", "reminder_drafted", {
+    await logEvent(merchantId, createdBy === "agent" || decidedBy === "agenticorg" ? "agent" : "system", "reminder_drafted", {
       reminder_id: reminderId,
       customer_id: pick.customerId,
       amount_paise: pick.amountPaise,
       reason: pick.reason,
+      decided_by: decidedBy,
     });
   }
 
   return createdIds;
+}
+
+/**
+ * The AgenticOrg agent decides who to remind and why, from our real ledger data.
+ * Amounts stay ledger-computed; anything unusable falls back to the built-in ranking.
+ */
+async function choosePicks(
+  merchantId: number,
+  businessName: string
+): Promise<{ picks: Pick[]; decidedBy: "agenticorg" | "builtin" }> {
+  const { ranked, owedOutPaise, horizon } = await rankCandidates(merchantId);
+  const builtin = () => ({ picks: heuristicPicks(ranked, owedOutPaise), decidedBy: "builtin" as const });
+
+  if (ranked.length === 0 || process.env.AI_STUB === "1" || !agenticorgConfigured()) return builtin();
+
+  try {
+    const candidates = ranked.slice(0, 15); // ponytail: top 15 keeps the prompt small; raise if merchants have long tails
+    const task = buildDecisionTask(candidates, {
+      businessName,
+      owedOutPaise,
+      horizon: horizon.toISOString().slice(0, 10),
+    });
+    const decision = applyAgentDecision(candidates, extractJson(await runAgenticorgTask(task)));
+    if (!decision) throw new Error("agent returned no usable picks");
+
+    await logEvent(merchantId, "agent", "agent_decided", {
+      agent_id: process.env.AGENTICORG_AGENT_ID,
+      summary: decision.summary,
+      considered: candidates.length,
+      picks: decision.picks.map((p) => ({ customer_id: p.customerId, name: p.name, reason: p.agentReason })),
+    });
+    return {
+      picks: decision.picks.map((p) => ({ ...p, reason: `🤖 ${p.agentReason}` })),
+      decidedBy: "agenticorg",
+    };
+  } catch (err) {
+    await logEvent(merchantId, "system", "agent_fallback", { error: String(err).slice(0, 300) });
+    return builtin();
+  }
+}
+
+function extractJson(raw: Record<string, unknown> | string): unknown {
+  if (typeof raw !== "string") return raw;
+  const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+  try {
+    return JSON.parse((fenced ? fenced[1] : raw).trim());
+  } catch {
+    return null;
+  }
 }

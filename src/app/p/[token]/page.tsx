@@ -2,19 +2,23 @@ import { notFound } from "next/navigation";
 import { ensureSchema, query } from "@/lib/db";
 import { formatINR } from "@/lib/money";
 import { buildQrDataUrl } from "@/lib/share";
+import { isPaymentLinkPaid } from "@/lib/pinelabs";
+import { markReminderPaid } from "@/lib/payments";
 
 export default async function PayPage({ params }: { params: Promise<{ token: string }> }) {
   await ensureSchema();
   const { token } = await params;
 
   const rows = await query<{
+    id: number;
+    payment_ref: string | null;
     amount_paise: number;
     status: string;
     payment_url: string | null;
     business_name: string;
     customer_name: string;
   }>(
-    `select r.amount_paise, r.status, r.payment_url, m.business_name, c.name as customer_name
+    `select r.id, r.payment_ref, r.amount_paise, r.status, r.payment_url, m.business_name, c.name as customer_name
      from reminders r
      join merchants m on m.id = r.merchant_id
      join customers c on c.id = r.customer_id
@@ -23,6 +27,15 @@ export default async function PayPage({ params }: { params: Promise<{ token: str
   );
   const reminder = rows[0];
   if (!reminder) notFound();
+
+  // Customer lands back here from Pine Labs checkout: confirm with Pine Labs, no webhook needed.
+  const pineLabsLive = (process.env.PINELABS_MODE || "stub") !== "stub";
+  if (pineLabsLive && reminder.status !== "paid" && reminder.payment_ref) {
+    if (await isPaymentLinkPaid(reminder.payment_ref).catch(() => false)) {
+      await markReminderPaid(reminder.id, reminder.payment_ref, "payment_link", "customer");
+      reminder.status = "paid";
+    }
+  }
 
   const isTest = (process.env.PINELABS_MODE || "stub") !== "live";
   const firstName = reminder.customer_name.split(" ")[0];
